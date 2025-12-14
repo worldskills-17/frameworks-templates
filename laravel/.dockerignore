@@ -1,0 +1,74 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Laravel specific
+/vendor
+/storage/*.key
+/storage/logs/*
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/app/*
+/bootstrap/cache/*
+
+# IDE and editor files
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Testing
+/tests
+phpunit.xml
+.phpunit.result.cache
+
+# Documentation
+README.md
+CHANGELOG.md
+LICENSE
+
+# Docker
+Dockerfile
+docker-compose.yml
+docker-compose.*.yml
+
+# Build artifacts
+/public/hot
+/public/storage
+/public/mix-manifest.json
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Cache directories
+.cache
+.parcel-cache
+
+# Coverage reports
+coverage
+.nyc_output
+
+# Local configuration
+.phpunit.result.cache
+Homestead.json
+Homestead.yaml

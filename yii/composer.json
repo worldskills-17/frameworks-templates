@@ -1,0 +1,29 @@
+{
+    "name": "yiisoft/yii2-app-basic",
+    "description": "Yii 2 Basic Application Template",
+    "type": "project",
+    "license": "BSD-3-Clause",
+    "require": {
+        "php": "^8.2",
+        "yiisoft/yii2": "^2.0.53",
+        "yiisoft/yii2-bootstrap5": "^2.0",
+        "vlucas/phpdotenv": "^5.6"
+    },
+    "require-dev": {
+        "yiisoft/yii2-debug": "^2.1",
+        "yiisoft/yii2-gii": "^2.2",
+        "phpunit/phpunit": "^10.5"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true
+    },
+    "autoload": {
+        "psr-4": {
+            "app\\": ""
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

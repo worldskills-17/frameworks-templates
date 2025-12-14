@@ -1,0 +1,31 @@
+FROM git.demo.nstrim.app/frameworks/laravel
+
+WORKDIR /var/www/html/
+
+# Copy application code
+COPY . .
+
+# Copy composer files first for better layer caching
+COPY composer.json composer.lock* ./
+RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts
+
+# Copy package files for Node.js dependencies
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+# Build assets
+RUN ls -la node_modules/.bin/ && \
+    npm run build \
+    && npm prune --production \
+    && npm cache clean --force
+
+RUN touch database/database.sqlite
+RUN chown -R www-data:www-data /var/www/html/storage/ /var/www/html/bootstrap /var/www/html/database
+
+# Set proper permissions
+ENV APP_ENV=production
+
+RUN php artisan key:generate
+RUN php artisan migrate --force
+
+ENTRYPOINT ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
