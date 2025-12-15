@@ -2,7 +2,7 @@ FROM node:lts as build-stage
 WORKDIR /app
 COPY package.json package-lock.json* ./
 # RUN npm config set strict-ssl false
-RUN npm ci --verbose
+RUN npm ci --loglevel=error
 COPY . .
 RUN npm run build
 

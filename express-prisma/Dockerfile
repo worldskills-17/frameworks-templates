@@ -9,7 +9,7 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 
 # Install dependencies
-RUN npm ci --verbose
+RUN npm ci --loglevel=error
 
 # Copy Prisma schema
 COPY prisma ./prisma/
