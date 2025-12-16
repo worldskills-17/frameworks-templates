@@ -1,10 +1,11 @@
 FROM php:8.4-apache
 
-# Accept database credentials as build arguments
+# Accept database and app configuration as build arguments
 ARG DB_NAME
 ARG DB_USERNAME
 ARG DB_PASSWORD
 ARG DB_HOST
+ARG APP_URL
 
 # Install system dependencies and Node.js in a single layer
 RUN apt-get update -y && apt-get install -y     openssl     zip     unzip     zlib1g-dev     libpq-dev     libicu-dev     libzip-dev     curl     libpng-dev     nano     git     cron     inetutils-ping     && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin/ --filename=composer     && docker-php-ext-install pdo pdo_pgsql pdo_mysql zip gd exif     && curl -fsSL https://deb.nodesource.com/setup_22.x | bash -     && apt-get install -y nodejs     && apt-get clean     && rm -rf /var/lib/apt/lists/*
@@ -20,7 +21,7 @@ WORKDIR /var/www/html/
 
 # Copy composer files first for better layer caching
 COPY composer.json composer.lock* ./
-RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts
+RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts --quiet
 
 # Copy package files for Node.js dependencies
 COPY package.json package-lock.json* ./
@@ -29,8 +30,12 @@ RUN npm ci
 # Copy application code
 COPY . .
 
-# Replace database placeholders in .env
-RUN sed -i "s|{{DB_NAME}}|${DB_NAME}|g" .env &&     sed -i "s|{{DB_USERNAME}}|${DB_USERNAME}|g" .env &&     sed -i "s|{{DB_PASSWORD}}|${DB_PASSWORD}|g" .env &&     sed -i "s|{{DB_HOST}}|${DB_HOST}|g" .env
+# Replace placeholders in .env
+RUN sed -i "s|{{DB_NAME}}|${DB_NAME}|g" .env && \
+    sed -i "s|{{DB_USERNAME}}|${DB_USERNAME}|g" .env && \
+    sed -i "s|{{DB_PASSWORD}}|${DB_PASSWORD}|g" .env && \
+    sed -i "s|{{DB_HOST}}|${DB_HOST}|g" .env && \
+    sed -i "s|{{APP_URL}}|${APP_URL}|g" .env
 
 # Generate Laravel APP_KEY automatically
 RUN php artisan key:generate --ansi

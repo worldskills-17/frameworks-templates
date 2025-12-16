@@ -1,5 +1,12 @@
 FROM php:8.4-apache
 
+# Accept database and app configuration as build arguments
+ARG DB_NAME
+ARG DB_USERNAME
+ARG DB_PASSWORD
+ARG DB_HOST
+ARG APP_URL
+
 # Install system dependencies
 RUN apt-get update -y && apt-get install -y \
     openssl \
@@ -35,7 +42,7 @@ WORKDIR /var/www/html/
 
 # Copy composer files first for better layer caching
 COPY composer.json composer.lock* ./
-RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --quiet
 
 # Copy application code
 COPY . .
@@ -44,6 +51,12 @@ COPY . .
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 775 /var/www/html/runtime \
     && chmod -R 775 /var/www/html/web/assets
+
+# Set database environment variables (read by config/web.php)
+ENV DB_DSN="mysql:host=${DB_HOST};dbname=${DB_NAME}"
+ENV DB_USERNAME=${DB_USERNAME}
+ENV DB_PASSWORD=${DB_PASSWORD}
+ENV APP_URL=${APP_URL}
 
 ENV YII_ENV=prod
 ENV YII_DEBUG=false

@@ -46,11 +46,11 @@
 
         <h2>Database Connection</h2>
         <?php
-        // Database credentials from environment
-        $db_host = getenv('DB_HOST') ?: 'db.worldskills.uk';
-        $db_name = getenv('DB_NAME') ?: 'your_database';
-        $db_user = getenv('DB_USER') ?: 'your_username';
-        $db_pass = getenv('DB_PASSWORD') ?: 'your_password';
+        // Database credentials from environment (auto-configured in production)
+        $db_host = getenv('DB_HOST');
+        $db_name = getenv('DB_NAME');
+        $db_user = getenv('DB_USER');
+        $db_pass = getenv('DB_PASSWORD');
 
         try {
             $pdo = new PDO(

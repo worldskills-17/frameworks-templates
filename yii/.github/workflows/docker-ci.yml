@@ -16,10 +16,21 @@ jobs:
       env:
         DOMAIN: ${{ secrets.DOMAIN }}
         SERVER_IP: ${{ secrets.SERVER_IP }}
+        DB_HOST: ${{ secrets.DB_HOST }}
+        DB_NAME: ${{ secrets.DB_NAME }}
+        DB_USERNAME: ${{ secrets.DB_USERNAME }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        APP_URL: ${{ secrets.APP_URL }}
       run: |
         DOCKER_BUILDKIT=0 docker build \
           --add-host=npm.${DOMAIN}:${SERVER_IP} \
           --add-host=git.${DOMAIN}:${SERVER_IP} \
+          --add-host=db.${DOMAIN}:${SERVER_IP} \
+          --build-arg DB_HOST=${DB_HOST} \
+          --build-arg DB_NAME=${DB_NAME} \
+          --build-arg DB_USERNAME=${DB_USERNAME} \
+          --build-arg DB_PASSWORD=${DB_PASSWORD} \
+          --build-arg APP_URL=${APP_URL} \
           . --file Dockerfile --tag git.${DOMAIN}/${{ github.repository }}:latest
 
     - name: Build error page on failure
