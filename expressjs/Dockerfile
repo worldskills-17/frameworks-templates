@@ -1,7 +1,7 @@
 FROM node:lts
 
 WORKDIR /app
-COPY package.json package.json* ./
+COPY package*.json ./
 RUN npm ci --loglevel=error
 COPY . .
 
