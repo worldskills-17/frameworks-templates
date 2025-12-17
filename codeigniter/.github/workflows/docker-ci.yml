@@ -26,11 +26,13 @@ jobs:
           --add-host=npm.${DOMAIN}:${SERVER_IP} \
           --add-host=git.${DOMAIN}:${SERVER_IP} \
           --add-host=db.${DOMAIN}:${SERVER_IP} \
+          --add-host=composer.${DOMAIN}:${SERVER_IP} \
           --build-arg DB_HOST=${DB_HOST} \
           --build-arg DB_NAME=${DB_NAME} \
           --build-arg DB_USERNAME=${DB_USERNAME} \
           --build-arg DB_PASSWORD=${DB_PASSWORD} \
           --build-arg APP_URL=${APP_URL} \
+          --build-arg COMPOSER_PROXY=https://composer.${DOMAIN} \
           . --file Dockerfile --tag git.${DOMAIN}/${{ github.repository }}:latest
 
     - name: Build error page on failure

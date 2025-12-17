@@ -1,5 +1,9 @@
 FROM node:22-alpine
 
+# Configure npm registry for Verdaccio cache
+ARG NPM_REGISTRY
+RUN if [ -n "$NPM_REGISTRY" ]; then npm config set registry "$NPM_REGISTRY"; fi
+
 # Install OpenSSL for Prisma
 RUN apk add --no-cache openssl
 

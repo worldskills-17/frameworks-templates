@@ -20,6 +20,7 @@ jobs:
         DOCKER_BUILDKIT=0 docker build \
           --add-host=npm.${DOMAIN}:${SERVER_IP} \
           --add-host=git.${DOMAIN}:${SERVER_IP} \
+          --build-arg NPM_REGISTRY=https://npm.${DOMAIN} \
           . --file Dockerfile --tag git.${DOMAIN}/${{ github.repository }}:latest
 
     - name: Build error page on failure

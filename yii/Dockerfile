@@ -6,6 +6,7 @@ ARG DB_USERNAME
 ARG DB_PASSWORD
 ARG DB_HOST
 ARG APP_URL
+ARG COMPOSER_PROXY
 
 # Install system dependencies
 RUN apt-get update -y && apt-get install -y \
@@ -42,7 +43,12 @@ WORKDIR /var/www/html/
 
 # Copy composer files first for better layer caching
 COPY composer.json composer.lock* ./
-RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --quiet
+
+# Configure Composer to use caching proxy (if provided)
+RUN if [ -n "$COMPOSER_PROXY" ]; then \
+        composer config --global repo.packagist composer "$COMPOSER_PROXY"; \
+    fi && \
+    composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --quiet
 
 # Copy application code
 COPY . .
