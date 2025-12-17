@@ -8,7 +8,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    # Note: Gitea act runner already has the code checked out
+    # No external actions needed for offline compatibility
 
     - name: Build the Docker image
       id: build
