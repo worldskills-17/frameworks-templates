@@ -8,8 +8,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    # Note: Gitea act runner already has the code checked out
-    # No external actions needed for offline compatibility
+    # Manual checkout - Gitea act_runner does NOT auto-checkout code
+    - name: Checkout repository
+      env:
+        GITEA_URL: ${{ secrets.GITEA_INTERNAL_URL }}
+      run: |
+        git clone --depth 1 ${GITEA_URL}/${{ github.repository }}.git .
+        git checkout ${{ github.sha }}
 
     - name: Build the Docker image
       id: build
@@ -22,18 +27,17 @@ jobs:
         DB_USERNAME: ${{ secrets.DB_USERNAME }}
         DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         APP_URL: ${{ secrets.APP_URL }}
+        COMPOSER_PROXY: ${{ secrets.COMPOSER_PROXY_URL }}
       run: |
         DOCKER_BUILDKIT=0 docker build \
-          --add-host=npm.${DOMAIN}:${SERVER_IP} \
-          --add-host=git.${DOMAIN}:${SERVER_IP} \
+          --network competition-network \
           --add-host=db.${DOMAIN}:${SERVER_IP} \
-          --add-host=composer.${DOMAIN}:${SERVER_IP} \
           --build-arg DB_HOST=${DB_HOST} \
           --build-arg DB_NAME=${DB_NAME} \
           --build-arg DB_USERNAME=${DB_USERNAME} \
           --build-arg DB_PASSWORD=${DB_PASSWORD} \
           --build-arg APP_URL=${APP_URL} \
-          --build-arg COMPOSER_PROXY=https://composer.${DOMAIN} \
+          --build-arg COMPOSER_PROXY=${COMPOSER_PROXY} \
           . --file Dockerfile --tag git.${DOMAIN}/${{ github.repository }}:latest
 
     - name: Build error page on failure

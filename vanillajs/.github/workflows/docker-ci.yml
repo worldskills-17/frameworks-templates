@@ -8,19 +8,22 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    # Note: Gitea act runner already has the code checked out
-    # No external actions needed for offline compatibility
+    # Manual checkout - Gitea act_runner does NOT auto-checkout code
+    - name: Checkout repository
+      env:
+        GITEA_URL: ${{ secrets.GITEA_INTERNAL_URL }}
+      run: |
+        git clone --depth 1 ${GITEA_URL}/${{ github.repository }}.git .
+        git checkout ${{ github.sha }}
 
     - name: Build the Docker image
       id: build
       continue-on-error: true
       env:
         DOMAIN: ${{ secrets.DOMAIN }}
-        SERVER_IP: ${{ secrets.SERVER_IP }}
       run: |
         DOCKER_BUILDKIT=0 docker build \
-          --add-host=npm.${DOMAIN}:${SERVER_IP} \
-          --add-host=git.${DOMAIN}:${SERVER_IP} \
+          --network competition-network \
           . --file Dockerfile --tag git.${DOMAIN}/${{ github.repository }}:latest
 
     - name: Build error page on failure
