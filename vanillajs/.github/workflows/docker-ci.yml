@@ -9,11 +9,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     # Manual checkout - Gitea act_runner does NOT auto-checkout code
+    # Uses USER/PASS secrets for private repo authentication
     - name: Checkout repository
       env:
-        GITEA_URL: ${{ secrets.GIT_INTERNAL_URL }}
+        GIT_USER: ${{ secrets.USER }}
+        GIT_PASS: ${{ secrets.PASS }}
       run: |
-        git clone --depth 1 ${GITEA_URL}/${{ github.repository }}.git .
+        git clone --depth 1 http://${GIT_USER}:${GIT_PASS}@gitea:3000/${{ github.repository }}.git .
         git checkout ${{ github.sha }}
 
     - name: Build the Docker image
