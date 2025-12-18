@@ -10,8 +10,10 @@ jobs:
     steps:
     # Manual checkout - Gitea act_runner does NOT auto-checkout code
     - name: Checkout repository
+      env:
+        GITEA_URL: ${{ secrets.GIT_INTERNAL_URL }}
       run: |
-        git clone --depth 1 ${{ secrets.REPO_SERVER_URL }}/${{ github.repository }}.git .
+        git clone --depth 1 ${GITEA_URL}/${{ github.repository }}.git .
         git checkout ${{ github.sha }}
 
     - name: Build the Docker image
