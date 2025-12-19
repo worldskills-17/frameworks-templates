@@ -31,7 +31,7 @@ jobs:
         APP_URL: ${{ secrets.APP_URL }}
       run: |
         DOCKER_BUILDKIT=0 docker build \
-          --network competition-network \
+          --network traefik-network \
           --add-host=db.${DOMAIN}:${SERVER_IP} \
           --build-arg DB_HOST=${DB_HOST} \
           --build-arg DB_NAME=${DB_NAME} \

@@ -25,7 +25,7 @@ jobs:
         DOMAIN: ${{ secrets.DOMAIN }}
       run: |
         DOCKER_BUILDKIT=0 docker build \
-          --network competition-network \
+          --network traefik-network \
           . --file Dockerfile --tag git.${DOMAIN}/${{ github.repository }}:latest
 
     - name: Build error page on failure

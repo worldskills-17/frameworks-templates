@@ -26,7 +26,7 @@ jobs:
         NPM_REGISTRY: ${{ secrets.NPM_REGISTRY_URL }}
       run: |
         DOCKER_BUILDKIT=0 docker build \
-          --network competition-network \
+          --network traefik-network \
           --build-arg NPM_REGISTRY=${NPM_REGISTRY} \
           . --file Dockerfile --tag git.${DOMAIN}/${{ github.repository }}:latest
 
