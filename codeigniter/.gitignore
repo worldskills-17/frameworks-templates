@@ -1,5 +1,6 @@
 /vendor/
-.env
+# Note: .env is tracked because it contains build-time placeholders ({{DB_HOST}}, etc.)
+# The Dockerfile replaces these placeholders during the build process
 writable/cache/*
 writable/logs/*
 writable/session/*
