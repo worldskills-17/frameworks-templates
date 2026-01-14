@@ -9,13 +9,14 @@ ARG APP_URL
 ARG COMPOSER_PROXY
 
 # Install system dependencies and Node.js in a single layer (quiet mode)
-RUN apt-get update -qq && apt-get install -qq -y \
+# DEBIAN_FRONTEND=noninteractive suppresses debconf warnings about missing tty
+RUN export DEBIAN_FRONTEND=noninteractive && apt-get update -qq && apt-get install -qq -y \
     openssl zip unzip zlib1g-dev libpq-dev libicu-dev libzip-dev \
     curl libpng-dev nano git cron inetutils-ping > /dev/null \
     && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin/ --filename=composer --quiet \
     && docker-php-ext-install pdo pdo_pgsql pdo_mysql zip gd exif > /dev/null 2>&1 \
     && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - > /dev/null 2>&1 \
-    && apt-get install -qq -y nodejs > /dev/null \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -qq -y nodejs > /dev/null \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Configure Apache
@@ -31,8 +32,10 @@ WORKDIR /var/www/html/
 COPY composer.json composer.lock* ./
 
 # Configure Composer to use caching proxy (if provided)
+# secure-http disabled for internal HTTP mirror (Packeton on Docker network)
 RUN if [ -n "$COMPOSER_PROXY" ]; then \
-        composer config --global repo.packagist composer "$COMPOSER_PROXY"; \
+        composer config --global repo.packagist composer "$COMPOSER_PROXY" && \
+        composer config --global secure-http false; \
     fi && \
     composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts --quiet
 

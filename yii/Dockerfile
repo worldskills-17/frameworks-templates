@@ -45,8 +45,10 @@ WORKDIR /var/www/html/
 COPY composer.json composer.lock* ./
 
 # Configure Composer to use caching proxy (if provided)
+# secure-http disabled for internal HTTP mirror (Packeton on Docker network)
 RUN if [ -n "$COMPOSER_PROXY" ]; then \
-        composer config --global repo.packagist composer "$COMPOSER_PROXY"; \
+        composer config --global repo.packagist composer "$COMPOSER_PROXY" && \
+        composer config --global secure-http false; \
     fi && \
     composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --quiet
 
