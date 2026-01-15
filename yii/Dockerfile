@@ -69,4 +69,10 @@ ENV APP_URL=${APP_URL}
 ENV YII_ENV=prod
 ENV YII_DEBUG=false
 
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 EXPOSE 80
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
