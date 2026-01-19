@@ -25,13 +25,9 @@ RUN apt-get update -y && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Enable Apache mod_rewrite
-RUN a2enmod rewrite
-
-# Configure Apache document root
-ENV APACHE_DOCUMENT_ROOT /var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+# Configure Apache with proper vhost (AllowOverride All for .htaccess)
+COPY httpd-vhosts.conf /etc/apache2/sites-available/000-default.conf
+RUN a2enmod rewrite > /dev/null
 
 # Configure PHP settings
 RUN echo "max_execution_time = 300" > /usr/local/etc/php/conf.d/custom.ini \
