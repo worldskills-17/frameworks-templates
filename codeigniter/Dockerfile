@@ -21,7 +21,7 @@ RUN apt-get update -y && apt-get install -y \
     libpng-dev \
     git \
     && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin/ --filename=composer \
-    && docker-php-ext-install pdo pdo_pgsql pdo_mysql zip gd intl \
+    && docker-php-ext-install pdo pdo_pgsql pdo_mysql mysqli zip gd intl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
