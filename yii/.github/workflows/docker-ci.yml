@@ -69,6 +69,15 @@ jobs:
         docker push git.${DOMAIN}/${{ github.repository }}:latest
         echo "Image pushed. Watchtower will auto-deploy within 30 seconds."
 
+    - name: Notify package cache update
+      if: always()
+      continue-on-error: true
+      env:
+        SERVER_IP: ${{ secrets.SERVER_IP }}
+      run: |
+        # Trigger dashboard to rescan cached packages
+        curl -sf http://${SERVER_IP}:9000/api/packages/webhook || true
+
     - name: Fail job if build failed
       if: steps.build.outcome == 'failure'
       run: exit 1
