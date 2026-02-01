@@ -1,0 +1,71 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    # Manual checkout - Gitea act_runner does NOT auto-checkout code
+    # Uses USER/PASS secrets for private repo authentication
+    - name: Checkout repository
+      env:
+        GIT_USER: ${{ secrets.USER }}
+        GIT_PASS: ${{ secrets.PASS }}
+      run: |
+        git clone --depth 1 http://${GIT_USER}:${GIT_PASS}@gitea:3000/${{ github.repository }}.git .
+        git checkout ${{ github.sha }}
+
+    - name: Build the Docker image
+      id: build
+      continue-on-error: true
+      env:
+        DOMAIN: ${{ secrets.DOMAIN }}
+        NPM_REGISTRY: ${{ secrets.NPM_REGISTRY_URL }}
+      run: |
+        DOCKER_BUILDKIT=0 docker build \
+          --network traefik-network \
+          --build-arg NPM_REGISTRY=${NPM_REGISTRY} \
+          . --file Dockerfile --tag git.${DOMAIN}/${{ github.repository }}:latest
+
+    - name: Build error page on failure
+      if: steps.build.outcome == 'failure'
+      env:
+        DOMAIN: ${{ secrets.DOMAIN }}
+      run: |
+        mkdir -p /tmp/error-page
+        cd /tmp/error-page
+        cat > Dockerfile << 'EOF'
+        FROM nginx:alpine
+        RUN echo '<html><head><style>body{font-family:system-ui;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#1a1a2e;color:#fff}.container{text-align:center;padding:2rem;border-radius:10px;background:#16213e;box-shadow:0 0 20px rgba(0,0,0,0.5)}h1{color:#e94560;margin:0 0 1rem}p{color:#a0a0a0}</style></head><body><div class="container"><h1>Build Failed</h1><p>Check Gitea Actions for build errors</p></div></body></html>' > /usr/share/nginx/html/index.html
+        EOF
+        DOCKER_BUILDKIT=0 docker build . --tag git.${DOMAIN}/${{ github.repository }}:latest
+
+    - name: Docker login
+      env:
+        USER: ${{ secrets.USER }}
+        PASS: ${{ secrets.PASS }}
+        DOMAIN: ${{ secrets.DOMAIN }}
+      run: echo "$PASS" | docker login -u "$USER" --password-stdin git.${DOMAIN}
+
+    - name: Push image
+      env:
+        DOMAIN: ${{ secrets.DOMAIN }}
+      run: |
+        docker push git.${DOMAIN}/${{ github.repository }}:latest
+        echo "Image pushed. Watchtower will auto-deploy within 30 seconds."
+
+    - name: Notify package cache update
+      if: always()
+      continue-on-error: true
+      env:
+        SERVER_IP: ${{ secrets.SERVER_IP }}
+      run: |
+        # Trigger dashboard to rescan cached packages
+        curl -sf http://${SERVER_IP}:9000/api/packages/webhook || true
+
+    - name: Fail job if build failed
+      if: steps.build.outcome == 'failure'
+      run: exit 1
