@@ -1,7 +1,13 @@
 FROM node:22-alpine
 
-# Configure npm registry for Verdaccio cache
+# Accept database configuration as build arguments
 ARG NPM_REGISTRY
+ARG DB_HOST
+ARG DB_NAME
+ARG DB_USERNAME
+ARG DB_PASSWORD
+
+# Configure npm registry for Verdaccio cache
 RUN if [ -n "$NPM_REGISTRY" ]; then npm config set registry "$NPM_REGISTRY"; fi
 
 # Install OpenSSL for Prisma
@@ -23,6 +29,12 @@ RUN npx prisma generate
 
 # Copy application code
 COPY . .
+
+# Replace placeholders in .env
+RUN sed -i "s|{{DB_HOST}}|${DB_HOST}|g" .env && \
+    sed -i "s|{{DB_NAME}}|${DB_NAME}|g" .env && \
+    sed -i "s|{{DB_USERNAME}}|${DB_USERNAME}|g" .env && \
+    sed -i "s|{{DB_PASSWORD}}|${DB_PASSWORD}|g" .env
 
 EXPOSE 80
 

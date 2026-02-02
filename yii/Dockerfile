@@ -55,6 +55,12 @@ RUN if [ -n "$COMPOSER_PROXY" ]; then \
 # Copy application code
 COPY . .
 
+# Replace placeholders in .env
+RUN sed -i "s|{{DB_NAME}}|${DB_NAME}|g" .env && \
+    sed -i "s|{{DB_USERNAME}}|${DB_USERNAME}|g" .env && \
+    sed -i "s|{{DB_PASSWORD}}|${DB_PASSWORD}|g" .env && \
+    sed -i "s|{{DB_HOST}}|${DB_HOST}|g" .env
+
 # Set proper permissions
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 775 /var/www/html/runtime \

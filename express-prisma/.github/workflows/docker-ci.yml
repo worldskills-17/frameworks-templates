@@ -24,10 +24,18 @@ jobs:
       env:
         DOMAIN: ${{ secrets.DOMAIN }}
         NPM_REGISTRY: ${{ secrets.NPM_REGISTRY_URL }}
+        DB_HOST: ${{ secrets.DB_HOST }}
+        DB_NAME: ${{ secrets.DB_NAME }}
+        DB_USERNAME: ${{ secrets.DB_USERNAME }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
       run: |
         DOCKER_BUILDKIT=0 docker build \
           --network traefik-network \
           --build-arg NPM_REGISTRY=${NPM_REGISTRY} \
+          --build-arg DB_HOST=${DB_HOST} \
+          --build-arg DB_NAME=${DB_NAME} \
+          --build-arg DB_USERNAME=${DB_USERNAME} \
+          --build-arg DB_PASSWORD=${DB_PASSWORD} \
           . --file Dockerfile --tag git.${DOMAIN}/${{ github.repository }}:latest
 
     - name: Build error page on failure
