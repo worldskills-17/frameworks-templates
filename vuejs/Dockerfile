@@ -2,11 +2,14 @@ FROM node:22-alpine as build-stage
 
 # Configure npm registry for Verdaccio cache
 ARG NPM_REGISTRY
-RUN if [ -n "$NPM_REGISTRY" ]; then npm config set registry "$NPM_REGISTRY"; fi
+RUN if [ -n "$NPM_REGISTRY" ]; then \
+        npm config set registry "$NPM_REGISTRY" && \
+        npm config set strict-ssl false; \
+    fi
 
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci --loglevel=error
+RUN npm install --loglevel error
 COPY . .
 RUN npm run build
 

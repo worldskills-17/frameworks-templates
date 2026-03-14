@@ -55,11 +55,10 @@ RUN if [ -n "$COMPOSER_PROXY" ]; then \
 # Copy application code
 COPY . .
 
-# Replace placeholders in .env
-RUN sed -i "s|{{DB_NAME}}|${DB_NAME}|g" .env && \
-    sed -i "s|{{DB_USERNAME}}|${DB_USERNAME}|g" .env && \
-    sed -i "s|{{DB_PASSWORD}}|${DB_PASSWORD}|g" .env && \
-    sed -i "s|{{DB_HOST}}|${DB_HOST}|g" .env
+# Force correct values in .env (overrides any competitor changes)
+RUN sed -i "s|^DB_DSN=.*|DB_DSN=mysql:host=${DB_HOST};dbname=${DB_NAME}|" .env && \
+    sed -i "s|^DB_USERNAME=.*|DB_USERNAME=${DB_USERNAME}|" .env && \
+    sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=${DB_PASSWORD}|" .env
 
 # Set proper permissions
 RUN chown -R www-data:www-data /var/www/html \

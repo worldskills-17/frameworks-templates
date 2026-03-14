@@ -51,12 +51,12 @@ RUN if [ -n "$COMPOSER_PROXY" ]; then \
 # Copy application code
 COPY . .
 
-# Replace placeholders in .env
-RUN sed -i "s|{{DB_NAME}}|${DB_NAME}|g" .env && \
-    sed -i "s|{{DB_USERNAME}}|${DB_USERNAME}|g" .env && \
-    sed -i "s|{{DB_PASSWORD}}|${DB_PASSWORD}|g" .env && \
-    sed -i "s|{{DB_HOST}}|${DB_HOST}|g" .env && \
-    sed -i "s|{{APP_URL}}|${APP_URL}|g" .env
+# Force correct values in .env (overrides any competitor changes)
+RUN sed -i "s|^database.default.database =.*|database.default.database = ${DB_NAME}|" .env && \
+    sed -i "s|^database.default.username =.*|database.default.username = ${DB_USERNAME}|" .env && \
+    sed -i "s|^database.default.password =.*|database.default.password = ${DB_PASSWORD}|" .env && \
+    sed -i "s|^database.default.hostname =.*|database.default.hostname = ${DB_HOST}|" .env && \
+    sed -i "s|^app.baseURL =.*|app.baseURL = '${APP_URL}'|" .env
 
 # Set proper permissions for writable directory
 RUN chown -R www-data:www-data /var/www/html \

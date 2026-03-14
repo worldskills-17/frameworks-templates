@@ -8,18 +8,19 @@ ARG MONGO_USER
 ARG MONGO_PASS
 
 # Configure npm registry for Verdaccio cache
-RUN if [ -n "$NPM_REGISTRY" ]; then npm config set registry "$NPM_REGISTRY"; fi
+RUN if [ -n "$NPM_REGISTRY" ]; then \
+        npm config set registry "$NPM_REGISTRY" && \
+        npm config set strict-ssl false; \
+    fi
 
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN if [ -f package-lock.json ]; then npm ci --loglevel=error; else npm install --loglevel=error; fi
 COPY . .
 
-# Replace placeholders in .env
-RUN sed -i "s|{{MONGO_HOST}}|${MONGO_HOST}|g" .env && \
-    sed -i "s|{{MONGO_DB}}|${MONGO_DB}|g" .env && \
-    sed -i "s|{{MONGO_USER}}|${MONGO_USER}|g" .env && \
-    sed -i "s|{{MONGO_PASS}}|${MONGO_PASS}|g" .env
+# Force correct values in .env (overrides any competitor changes)
+RUN sed -i "s|^MONGO_URI=.*|MONGO_URI=\"mongodb://${MONGO_USER}:${MONGO_PASS}@${MONGO_HOST}:27017/${MONGO_DB}?authSource=admin\"|" .env && \
+    sed -i "s|^MONGO_DB=.*|MONGO_DB=\"${MONGO_DB}\"|" .env
 
 EXPOSE 80
 

@@ -26,16 +26,31 @@ RUN a2enmod rewrite > /dev/null
 # Configure PHP settings in a single layer
 RUN echo "max_execution_time = 1200" > /usr/local/etc/php/conf.d/execution.ini     && echo "memory_limit = 2048M" >> /usr/local/etc/php/conf.d/execution.ini     && echo "post_max_size = 100M" >> /usr/local/etc/php/conf.d/execution.ini     && echo "upload_max_filesize = 100M" >> /usr/local/etc/php/conf.d/execution.ini
 
+# Force HTTPS scheme — Traefik terminates SSL and forwards HTTP to Apache,
+# so Laravel sees HTTP and generates http:// asset URLs (mixed content).
+# auto_prepend_file runs before ANY PHP code, setting $_SERVER['HTTPS']='on'.
+RUN printf '<?php\n$_SERVER["HTTPS"] = "on";\n$_SERVER["SERVER_PORT"] = 443;\n$_SERVER["HTTP_X_FORWARDED_PROTO"] = "https";\n$_SERVER["HTTP_X_FORWARDED_SSL"] = "on";\n' > /usr/local/etc/php/force-https.php \
+    && echo "auto_prepend_file = /usr/local/etc/php/force-https.php" > /usr/local/etc/php/conf.d/99-force-https.ini
+
 WORKDIR /var/www/html/
 
 # Copy composer files first for better layer caching
 COPY composer.json composer.lock* ./
 
+# Trust self-signed CA cert (for internal HTTPS services like Packeton/Gitea)
+# ca-cert.crt is copied into build context by CI workflow
+COPY ca-cert.crt* /tmp/
+RUN apt-get update -qq && apt-get install -qq -y ca-certificates > /dev/null && rm -rf /var/lib/apt/lists/* \
+    && if [ -f /tmp/ca-cert.crt ]; then \
+        cp /tmp/ca-cert.crt /usr/local/share/ca-certificates/competition-ca.crt && \
+        update-ca-certificates; \
+    fi
+
 # Configure Composer to use caching proxy (if provided)
-# secure-http disabled for internal HTTP mirror (Packeton on Docker network)
+# disable-tls for isolated network with self-signed certs
 RUN if [ -n "$COMPOSER_PROXY" ]; then \
         composer config --global repo.packagist composer "$COMPOSER_PROXY" && \
-        composer config --global secure-http false; \
+        composer config --global disable-tls true; \
     fi && \
     composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts --quiet
 
@@ -45,25 +60,27 @@ COPY package.json package-lock.json* ./
 # Configure npm to use Verdaccio cache (if NPM_REGISTRY provided)
 ARG NPM_REGISTRY
 RUN if [ -n "$NPM_REGISTRY" ]; then \
-        npm config set registry "$NPM_REGISTRY"; \
+        npm config set registry "$NPM_REGISTRY" && \
+        npm config set strict-ssl false; \
     fi && \
-    npm ci --silent 2>/dev/null || npm ci --loglevel error
+    npm install --loglevel error
 
 # Copy application code
 COPY . .
 
-# Replace placeholders in .env
-RUN sed -i "s|{{DB_NAME}}|${DB_NAME}|g" .env && \
-    sed -i "s|{{DB_USERNAME}}|${DB_USERNAME}|g" .env && \
-    sed -i "s|{{DB_PASSWORD}}|${DB_PASSWORD}|g" .env && \
-    sed -i "s|{{DB_HOST}}|${DB_HOST}|g" .env && \
-    sed -i "s|{{APP_URL}}|${APP_URL}|g" .env
+# Force correct values in .env (overrides any competitor changes)
+RUN sed -i "s|^DB_DATABASE=.*|DB_DATABASE=${DB_NAME}|" .env && \
+    sed -i "s|^DB_USERNAME=.*|DB_USERNAME=${DB_USERNAME}|" .env && \
+    sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=${DB_PASSWORD}|" .env && \
+    sed -i "s|^DB_HOST=.*|DB_HOST=${DB_HOST}|" .env && \
+    sed -i "s|^APP_URL=.*|APP_URL=${APP_URL}|" .env && \
+    sed -i "s|^DB_CONNECTION=.*|DB_CONNECTION=mysql|" .env
 
 # Generate Laravel APP_KEY automatically
 RUN php artisan key:generate --ansi --quiet
 
-# Build assets (quiet mode - only show errors)
-RUN npm run build --silent 2>&1 | grep -i error || true \
+# Build assets
+RUN npm run build \
     && npm prune --production --silent 2>/dev/null \
     && npm cache clean --force --silent 2>/dev/null
 
