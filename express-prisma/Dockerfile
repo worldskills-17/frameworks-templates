@@ -33,8 +33,8 @@ RUN npx prisma generate
 # Copy application code
 COPY . .
 
-# Force correct values in .env (overrides any competitor changes)
-RUN sed -i "s|^DATABASE_URL=.*|DATABASE_URL=\"mysql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:3306/${DB_NAME}\"|" .env
+# Create .env with database URL (file is gitignored so must be generated at build time)
+RUN echo "DATABASE_URL=\"mysql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:3306/${DB_NAME}\"" > .env
 
 EXPOSE 80
 

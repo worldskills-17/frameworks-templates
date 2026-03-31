@@ -55,10 +55,9 @@ RUN if [ -n "$COMPOSER_PROXY" ]; then \
 # Copy application code
 COPY . .
 
-# Force correct values in .env (overrides any competitor changes)
-RUN sed -i "s|^DB_DSN=.*|DB_DSN=mysql:host=${DB_HOST};dbname=${DB_NAME}|" .env && \
-    sed -i "s|^DB_USERNAME=.*|DB_USERNAME=${DB_USERNAME}|" .env && \
-    sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=${DB_PASSWORD}|" .env
+# Create .env with database config (file is gitignored so must be generated at build time)
+RUN printf "YII_ENV=prod\nYII_DEBUG=false\nDB_DSN=mysql:host=%s;dbname=%s\nDB_USERNAME=%s\nDB_PASSWORD=%s\n" \
+    "${DB_HOST}" "${DB_NAME}" "${DB_USERNAME}" "${DB_PASSWORD}" > .env
 
 # Set proper permissions
 RUN chown -R www-data:www-data /var/www/html \
