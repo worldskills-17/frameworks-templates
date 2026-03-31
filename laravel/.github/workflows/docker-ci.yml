@@ -32,9 +32,9 @@ jobs:
         NPM_REGISTRY: ${{ secrets.NPM_REGISTRY_URL }}
         COMPOSER_PROXY: ${{ secrets.COMPOSER_PROXY_URL }}
       run: |
-        # Copy CA cert into build context so Dockerfile can COPY it
-        docker cp traefik:/certs/ca-cert.crt ./ca-cert.crt 2>/dev/null || \
-          curl -sfk https://git.${DOMAIN}/ca.crt -o ./ca-cert.crt 2>/dev/null || true
+        # Copy SSL cert into build context so Dockerfile can COPY it
+        docker cp traefik:/certs/ssl-cert.crt ./ssl-cert.crt 2>/dev/null || \
+          docker cp traefik:/certs/ca.crt ./ssl-cert.crt 2>/dev/null || true
         DOCKER_BUILDKIT=0 docker build \
           --network traefik-network \
           --add-host=db.${DOMAIN}:${SERVER_IP} \

@@ -37,12 +37,12 @@ WORKDIR /var/www/html/
 # Copy composer files first for better layer caching
 COPY composer.json composer.lock* ./
 
-# Trust self-signed CA cert (for internal HTTPS services like Packeton/Gitea)
-# ca-cert.crt is copied into build context by CI workflow
-COPY ca-cert.crt* /tmp/
+# Trust self-signed SSL cert (for internal HTTPS services like Packeton/Gitea)
+# ssl-cert.crt is copied into build context by CI workflow
+COPY ssl-cert.crt* /tmp/
 RUN apt-get update -qq && apt-get install -qq -y ca-certificates > /dev/null && rm -rf /var/lib/apt/lists/* \
-    && if [ -f /tmp/ca-cert.crt ]; then \
-        cp /tmp/ca-cert.crt /usr/local/share/ca-certificates/competition-ca.crt && \
+    && if [ -f /tmp/ssl-cert.crt ]; then \
+        cp /tmp/ssl-cert.crt /usr/local/share/ca-certificates/ssl-cert.crt && \
         update-ca-certificates; \
     fi
 
