@@ -70,7 +70,7 @@ jobs:
           echo "Push attempt $attempt failed, retrying in $((attempt * 5))s..."
           sleep $((attempt * 5))
         done
-        docker push "$IMAGE" 2>/dev/null || { echo "Push failed after retries"; exit 1; }
+        docker push "$IMAGE" 2>/dev/null || exit 1
         echo "Image pushed. Watchtower will auto-deploy within 30 seconds."
 
     - name: Notify package cache update
