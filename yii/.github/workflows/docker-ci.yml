@@ -66,7 +66,13 @@ jobs:
       env:
         DOMAIN: ${{ secrets.DOMAIN }}
       run: |
-        docker push git.${DOMAIN}/${{ github.repository }}:latest
+        IMAGE="git.${DOMAIN}/${{ github.repository }}:latest"
+        for attempt in 1 2 3; do
+          docker push "$IMAGE" && break
+          echo "Push attempt $attempt failed, retrying in $((attempt * 5))s..."
+          sleep $((attempt * 5))
+        done
+        docker push "$IMAGE" 2>/dev/null || { echo "Push failed after retries"; exit 1; }
         echo "Image pushed. Watchtower will auto-deploy within 30 seconds."
 
     - name: Notify package cache update
