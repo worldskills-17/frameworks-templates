@@ -1,11 +1,9 @@
 FROM node:lts
 
 # Configure npm registry for Verdaccio cache
-ARG NPM_REGISTRY
-RUN if [ -n "$NPM_REGISTRY" ]; then \
-        npm config set registry "$NPM_REGISTRY" && \
-        npm config set strict-ssl false; \
-    fi
+ARG NPM_REGISTRY=http://verdaccio:4873
+RUN npm config set registry "$NPM_REGISTRY" && \
+    npm config set strict-ssl false
 
 WORKDIR /app
 COPY package.json package-lock.json* ./

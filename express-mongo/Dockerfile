@@ -1,17 +1,15 @@
 FROM node:22-alpine
 
 # Accept database configuration as build arguments
-ARG NPM_REGISTRY
+ARG NPM_REGISTRY=http://verdaccio:4873
 ARG MONGO_HOST
 ARG MONGO_DB
 ARG MONGO_USER
 ARG MONGO_PASS
 
 # Configure npm registry for Verdaccio cache
-RUN if [ -n "$NPM_REGISTRY" ]; then \
-        npm config set registry "$NPM_REGISTRY" && \
-        npm config set strict-ssl false; \
-    fi
+RUN npm config set registry "$NPM_REGISTRY" && \
+    npm config set strict-ssl false
 
 WORKDIR /app
 COPY package.json package-lock.json* ./

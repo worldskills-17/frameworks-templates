@@ -23,7 +23,7 @@ jobs:
       continue-on-error: true
       env:
         DOMAIN: ${{ secrets.DOMAIN }}
-        NPM_REGISTRY: ${{ secrets.NPM_REGISTRY_URL }}
+        NPM_REGISTRY: ${{ secrets.NPM_REGISTRY_URL || 'http://verdaccio:4873' }}
         MONGO_HOST: ${{ secrets.MONGO_HOST }}
         MONGO_DB: ${{ secrets.MONGO_DB }}
         MONGO_USER: ${{ secrets.MONGO_USER }}

@@ -29,7 +29,7 @@ jobs:
         DB_USERNAME: ${{ secrets.DB_USERNAME }}
         DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         APP_URL: ${{ secrets.APP_URL }}
-        NPM_REGISTRY: ${{ secrets.NPM_REGISTRY_URL }}
+        NPM_REGISTRY: ${{ secrets.NPM_REGISTRY_URL || 'http://verdaccio:4873' }}
         COMPOSER_PROXY: ${{ secrets.COMPOSER_PROXY_URL }}
       run: |
         # Copy SSL cert into build context so Dockerfile can COPY it

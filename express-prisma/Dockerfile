@@ -1,17 +1,15 @@
 FROM node:22-alpine
 
 # Accept database configuration as build arguments
-ARG NPM_REGISTRY
+ARG NPM_REGISTRY=http://verdaccio:4873
 ARG DB_HOST
 ARG DB_NAME
 ARG DB_USERNAME
 ARG DB_PASSWORD
 
 # Configure npm registry for Verdaccio cache
-RUN if [ -n "$NPM_REGISTRY" ]; then \
-        npm config set registry "$NPM_REGISTRY" && \
-        npm config set strict-ssl false; \
-    fi
+RUN npm config set registry "$NPM_REGISTRY" && \
+    npm config set strict-ssl false
 
 # Install OpenSSL for Prisma
 RUN apk add --no-cache openssl
