@@ -8,27 +8,22 @@ ARG DB_HOST
 ARG APP_URL
 ARG COMPOSER_PROXY
 
-# Install system dependencies and Node.js — retry each apt step up to 3 times
-# so transient deb.debian.org CDN errors (occasional 400/404 on single .deb
-# files) don't fail the whole build.
-RUN set -e; \
-    export DEBIAN_FRONTEND=noninteractive; \
-    for i in 1 2 3; do \
+# Install system dependencies and Node.js (retry on transient CDN errors)
+RUN export DEBIAN_FRONTEND=noninteractive \
+    && for i in 1 2 3; do \
         apt-get update -qq && apt-get install -qq -y \
             openssl zip unzip zlib1g-dev libpq-dev libicu-dev libzip-dev \
             curl libpng-dev nano git cron inetutils-ping > /dev/null \
         && break; \
         [ "$i" = "3" ] && exit 1; \
-        echo "apt-get (system deps) attempt $i failed; sleeping $((i*5))s..."; \
         sleep $((i*5)); \
-    done; \
-    curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin/ --filename=composer --quiet \
+    done \
+    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin/ --filename=composer --quiet \
     && docker-php-ext-install pdo pdo_pgsql pdo_mysql zip gd exif > /dev/null 2>&1 \
     && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - > /dev/null 2>&1 \
     && for i in 1 2 3; do \
         DEBIAN_FRONTEND=noninteractive apt-get install -qq -y nodejs > /dev/null && break; \
         [ "$i" = "3" ] && exit 1; \
-        echo "apt-get (nodejs) attempt $i failed; sleeping $((i*5))s..."; \
         sleep $((i*5)); \
     done \
     && apt-get clean && rm -rf /var/lib/apt/lists/*

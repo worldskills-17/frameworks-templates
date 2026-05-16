@@ -8,21 +8,18 @@ ARG DB_HOST
 ARG APP_URL
 ARG COMPOSER_PROXY
 
-# Install system dependencies — retry the apt step up to 3 times so transient
-# deb.debian.org CDN errors (occasional 400/404 on individual .deb files)
-# don't fail the whole build.
-RUN set -e; \
-    for i in 1 2 3; do \
-        apt-get update -y && apt-get install -y --no-install-recommends \
+# Install system dependencies (retry on transient CDN errors; quiet output)
+RUN export DEBIAN_FRONTEND=noninteractive \
+    && for i in 1 2 3; do \
+        apt-get update -qq && apt-get install -qq -y \
             openssl zip unzip zlib1g-dev libpq-dev libicu-dev libzip-dev \
-            curl libpng-dev git \
+            curl libpng-dev git > /dev/null \
         && break; \
         [ "$i" = "3" ] && exit 1; \
-        echo "apt-get attempt $i failed; sleeping $((i*5))s..."; \
         sleep $((i*5)); \
-    done; \
-    curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin/ --filename=composer \
-    && docker-php-ext-install pdo pdo_pgsql pdo_mysql mysqli zip gd intl \
+    done \
+    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin/ --filename=composer --quiet \
+    && docker-php-ext-install pdo pdo_pgsql pdo_mysql mysqli zip gd intl > /dev/null 2>&1 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
