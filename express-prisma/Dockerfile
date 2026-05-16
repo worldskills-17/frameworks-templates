@@ -11,16 +11,16 @@ ARG DB_PASSWORD
 RUN npm config set registry "$NPM_REGISTRY" && \
     npm config set strict-ssl false
 
-# Install OpenSSL for Prisma
-RUN apk add --no-cache openssl
+# Install OpenSSL for Prisma — retry on transient Alpine CDN errors
+RUN for i in 1 2 3; do apk add --no-cache openssl && break; [ "$i" = "3" ] && exit 1; sleep $((i*3)); done
 
 WORKDIR /app
 
 # Copy package files
 COPY package.json package-lock.json* ./
 
-# Install dependencies
-RUN npm install --loglevel error
+# Install dependencies — retry on transient registry errors
+RUN for i in 1 2 3; do npm install --loglevel error && break; [ "$i" = "3" ] && exit 1; sleep $((i*3)); done
 
 # Copy Prisma schema
 COPY prisma ./prisma/

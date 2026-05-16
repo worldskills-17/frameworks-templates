@@ -7,7 +7,7 @@ RUN npm config set registry "$NPM_REGISTRY" && \
 
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm install --loglevel error
+RUN for i in 1 2 3; do npm install --loglevel error && break; [ "$i" = "3" ] && exit 1; sleep $((i*3)); done
 COPY . .
 RUN npm run build
 

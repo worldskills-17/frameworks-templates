@@ -8,15 +8,29 @@ ARG DB_HOST
 ARG APP_URL
 ARG COMPOSER_PROXY
 
-# Install system dependencies and Node.js in a single layer (quiet mode)
-# DEBIAN_FRONTEND=noninteractive suppresses debconf warnings about missing tty
-RUN export DEBIAN_FRONTEND=noninteractive && apt-get update -qq && apt-get install -qq -y \
-    openssl zip unzip zlib1g-dev libpq-dev libicu-dev libzip-dev \
-    curl libpng-dev nano git cron inetutils-ping > /dev/null \
-    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin/ --filename=composer --quiet \
+# Install system dependencies and Node.js — retry each apt step up to 3 times
+# so transient deb.debian.org CDN errors (occasional 400/404 on single .deb
+# files) don't fail the whole build.
+RUN set -e; \
+    export DEBIAN_FRONTEND=noninteractive; \
+    for i in 1 2 3; do \
+        apt-get update -qq && apt-get install -qq -y \
+            openssl zip unzip zlib1g-dev libpq-dev libicu-dev libzip-dev \
+            curl libpng-dev nano git cron inetutils-ping > /dev/null \
+        && break; \
+        [ "$i" = "3" ] && exit 1; \
+        echo "apt-get (system deps) attempt $i failed; sleeping $((i*5))s..."; \
+        sleep $((i*5)); \
+    done; \
+    curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin/ --filename=composer --quiet \
     && docker-php-ext-install pdo pdo_pgsql pdo_mysql zip gd exif > /dev/null 2>&1 \
     && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - > /dev/null 2>&1 \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -qq -y nodejs > /dev/null \
+    && for i in 1 2 3; do \
+        DEBIAN_FRONTEND=noninteractive apt-get install -qq -y nodejs > /dev/null && break; \
+        [ "$i" = "3" ] && exit 1; \
+        echo "apt-get (nodejs) attempt $i failed; sleeping $((i*5))s..."; \
+        sleep $((i*5)); \
+    done \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Configure Apache
@@ -40,7 +54,13 @@ COPY composer.json composer.lock* ./
 # Trust self-signed SSL cert (for internal HTTPS services like Packeton/Gitea)
 # ssl-cert.crt is copied into build context by CI workflow
 COPY ssl-cert.crt* /tmp/
-RUN apt-get update -qq && apt-get install -qq -y ca-certificates > /dev/null && rm -rf /var/lib/apt/lists/* \
+RUN set -e; \
+    for i in 1 2 3; do \
+        apt-get update -qq && apt-get install -qq -y ca-certificates > /dev/null && break; \
+        [ "$i" = "3" ] && exit 1; \
+        sleep $((i*3)); \
+    done; \
+    rm -rf /var/lib/apt/lists/* \
     && if [ -f /tmp/ssl-cert.crt ]; then \
         cp /tmp/ssl-cert.crt /usr/local/share/ca-certificates/ssl-cert.crt && \
         update-ca-certificates; \
@@ -52,7 +72,11 @@ RUN if [ -n "$COMPOSER_PROXY" ]; then \
         composer config --global repo.packagist composer "$COMPOSER_PROXY" && \
         composer config --global disable-tls true; \
     fi && \
-    composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts --quiet
+    for i in 1 2 3; do \
+        composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts --quiet && break; \
+        [ "$i" = "3" ] && exit 1; \
+        sleep $((i*5)); \
+    done
 
 # Copy package files for Node.js dependencies
 COPY package.json package-lock.json* ./
@@ -63,7 +87,7 @@ RUN if [ -n "$NPM_REGISTRY" ]; then \
         npm config set registry "$NPM_REGISTRY" && \
         npm config set strict-ssl false; \
     fi && \
-    npm install --loglevel error
+    for i in 1 2 3; do npm install --loglevel error && break; [ "$i" = "3" ] && exit 1; sleep $((i*3)); done
 
 # Copy application code
 COPY . .

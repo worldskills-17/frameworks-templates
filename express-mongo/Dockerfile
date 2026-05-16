@@ -13,7 +13,11 @@ RUN npm config set registry "$NPM_REGISTRY" && \
 
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN if [ -f package-lock.json ]; then npm ci --loglevel=error; else npm install --loglevel=error; fi
+RUN for i in 1 2 3; do \
+        ( if [ -f package-lock.json ]; then npm ci --loglevel=error; else npm install --loglevel=error; fi ) && break; \
+        [ "$i" = "3" ] && exit 1; \
+        sleep $((i*3)); \
+    done
 COPY . .
 
 # Force correct values in .env (overrides any competitor changes)
