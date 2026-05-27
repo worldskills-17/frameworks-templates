@@ -15,6 +15,9 @@ Pre-configured framework templates for offline competition environments.
 ### Backend (Node.js)
 - **expressjs** - Express.js with Sequelize
 - **express-prisma** - Express.js with Prisma ORM
+- **express-mongo** - Express.js with MongoDB
+- **nestjs** - NestJS (TypeScript, no DB)
+- **nestjs-prisma** - NestJS with Prisma ORM + MySQL
 
 ### Backend (PHP)
 - **php** - Plain PHP with Apache
