@@ -34,8 +34,9 @@ COPY . .
 # Compile TypeScript
 RUN npm run build
 
-# Create .env with database URL (file is gitignored so must be generated at build time)
-RUN echo "DATABASE_URL=\"mysql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:3306/${DB_NAME}\"" > .env
+# Bake DATABASE_URL into the image env so it's available to both the Prisma CLI
+# (at startup, for db push) AND the runtime @prisma/client library (no dotenv needed).
+ENV DATABASE_URL=mysql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:3306/${DB_NAME}
 
 EXPOSE 80
 
