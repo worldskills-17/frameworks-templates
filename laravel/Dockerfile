@@ -68,10 +68,13 @@ RUN if [ -n "$COMPOSER_PROXY" ]; then \
         composer config --global disable-tls true; \
     fi && \
     for i in 1 2 3; do \
-        composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts --quiet && break; \
+        composer install --optimize-autoloader --no-interaction --prefer-dist --no-scripts --quiet && break; \
         [ "$i" = "3" ] && exit 1; \
         sleep $((i*5)); \
     done
+# NOTE: dev deps kept on purpose. Laravel's DatabaseSeeder uses fakerphp/faker
+# which lives in require-dev; running with --no-dev breaks `php artisan db:seed`
+# during competition setup. Image grows ~10MB; the tradeoff is correctness.
 
 # Copy package files for Node.js dependencies
 COPY package.json package-lock.json* ./
