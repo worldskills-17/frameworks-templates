@@ -2,7 +2,7 @@
 # Laravel Docker Entrypoint
 #
 # Boots in this order, BLOCKING on each step:
-#   1. Wait for database to accept connections (up to 60s)
+#   1. Wait for database (via Laravel's own config, not process env)
 #   2. Storage symlink + cache clears
 #   3. Run migrations synchronously
 #   4. Verify expected Laravel 11 default tables exist
@@ -18,16 +18,13 @@ set -e
 echo "=== Laravel Container Starting ==="
 
 # --- 1. Wait for database connectivity ---
-echo "Waiting for database at ${DB_HOST}..."
+# Use artisan (which loads .env via dotenv) rather than getenv() — DB_HOST lives
+# in .env only, not in the container's process environment.
+echo "Waiting for database (via Laravel)..."
 MAX_DB_TRIES=60
 DB_READY=0
 for i in $(seq 1 $MAX_DB_TRIES); do
-    if php -r "
-        try {
-            new PDO('mysql:host=' . getenv('DB_HOST') . ';port=3306', getenv('DB_USERNAME'), getenv('DB_PASSWORD'));
-            exit(0);
-        } catch (Exception \$e) { exit(1); }
-    " 2>/dev/null; then
+    if php artisan migrate --pretend >/dev/null 2>&1; then
         echo "  Database reachable after ${i}s"
         DB_READY=1
         break
@@ -37,7 +34,7 @@ for i in $(seq 1 $MAX_DB_TRIES); do
 done
 
 if [ $DB_READY -eq 0 ]; then
-    echo "[ERROR] Database ${DB_HOST} unreachable after ${MAX_DB_TRIES}s. Aborting container start."
+    echo "[ERROR] Database unreachable via Laravel after ${MAX_DB_TRIES}s. Aborting container start."
     exit 1
 fi
 
@@ -63,13 +60,8 @@ fi
 EXPECTED_TABLES="users sessions migrations"
 MISSING_TABLES=""
 for t in $EXPECTED_TABLES; do
-    if ! php -r "
-        try {
-            \$pdo = new PDO('mysql:host=' . getenv('DB_HOST') . ';dbname=' . getenv('DB_NAME'), getenv('DB_USERNAME'), getenv('DB_PASSWORD'));
-            \$pdo->query('SELECT 1 FROM \`$t\` LIMIT 1');
-            exit(0);
-        } catch (Exception \$e) { exit(1); }
-    " 2>/dev/null; then
+    # Run a single-row select through artisan tinker so .env is loaded properly.
+    if ! php artisan tinker --execute "DB::table('$t')->limit(1)->get();" >/dev/null 2>&1; then
         MISSING_TABLES="$MISSING_TABLES $t"
     fi
 done
