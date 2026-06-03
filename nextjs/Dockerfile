@@ -1,21 +1,38 @@
-FROM node:lts as build-stage
+FROM node:22-alpine
 
-# Configure npm registry for Verdaccio cache
+# npm registry + optional database configuration as build arguments.
+# DB_* are OPTIONAL: they are baked into the runtime env so a competitor CAN use
+# MySQL (mysql2/knex) if they want. Nothing connects automatically — a plain
+# Next.js app simply ignores them, so an empty DB config never breaks the build.
 ARG NPM_REGISTRY=http://verdaccio:4873
+ARG DB_HOST
+ARG DB_NAME
+ARG DB_USERNAME
+ARG DB_PASSWORD
+
 RUN npm config set registry "$NPM_REGISTRY" && \
     npm config set strict-ssl false
 
+# libc6-compat for Next.js native deps — retry on transient Alpine CDN errors
+RUN for i in 1 2 3; do apk add --no-cache libc6-compat && break; [ "$i" = "3" ] && exit 1; sleep $((i*3)); done
+
 WORKDIR /app
+
 COPY package.json package-lock.json* ./
 RUN for i in 1 2 3; do npm install --loglevel error && break; [ "$i" = "3" ] && exit 1; sleep $((i*3)); done
+
 COPY . .
+
 RUN npm run build
 
-FROM nginx:alpine
-
-COPY --from=build-stage /app/out /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# DB connection available at runtime for competitors who opt in to MySQL.
+# Individual vars for mysql2/knex; DATABASE_URL for tools that expect a URL.
+ENV DB_HOST=${DB_HOST} \
+    DB_NAME=${DB_NAME} \
+    DB_USERNAME=${DB_USERNAME} \
+    DB_PASSWORD=${DB_PASSWORD} \
+    DATABASE_URL=mysql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:3306/${DB_NAME}
 
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["npm", "run", "start"]
