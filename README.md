@@ -26,6 +26,9 @@ Pre-configured framework templates for offline competition environments.
 - **codeigniter** - CodeIgniter 4
 - **yii** - Yii 2
 
+### Mixed stack
+- **vanilla-php-node** - Static HTML/CSS/JS + raw PHP + raw Node in one container. For modules made of small independent tasks (one folder per task) where each backend task may be solved in either raw PHP or raw Node - mixing stacks between tasks in the same repo. Node servers auto-start with per-task port injection (hardcoded ports overridden); PHP runs via mod_php with .htaccess router support. No database.
+
 ## Features
 
 All templates include:
