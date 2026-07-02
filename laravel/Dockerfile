@@ -1,12 +1,9 @@
 FROM php:8.4-apache
 
-# Accept database and app configuration as build arguments
-ARG DB_NAME
-ARG DB_USERNAME
-ARG DB_PASSWORD
-ARG DB_HOST
-ARG APP_URL
-ARG COMPOSER_PROXY
+# NOTE: per-repo build args (DB_*, APP_URL) are deliberately declared far
+# below, right before first use. The classic builder folds declared ARG
+# values into the cache key of every later RUN - declaring them here would
+# make each module repo rebuild the heavy apt/extension layers from scratch.
 
 # Install system dependencies and Node.js (retry on transient CDN errors)
 RUN export DEBIAN_FRONTEND=noninteractive \
@@ -63,6 +60,7 @@ RUN set -e; \
 
 # Configure Composer to use caching proxy (if provided)
 # disable-tls for isolated network with self-signed certs
+ARG COMPOSER_PROXY
 RUN if [ -n "$COMPOSER_PROXY" ]; then \
         composer config --global repo.packagist composer "$COMPOSER_PROXY" && \
         composer config --global disable-tls true; \
@@ -96,6 +94,14 @@ RUN if [ -f package.json ]; then \
 
 # Copy application code
 COPY . .
+
+# Per-repo database and app configuration (declared here, not at the top -
+# see the note under FROM)
+ARG DB_NAME
+ARG DB_USERNAME
+ARG DB_PASSWORD
+ARG DB_HOST
+ARG APP_URL
 
 # Force correct values in .env (overrides any competitor changes)
 RUN sed -i "s|^DB_DATABASE=.*|DB_DATABASE=${DB_NAME}|" .env && \

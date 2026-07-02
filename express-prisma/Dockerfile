@@ -1,11 +1,9 @@
 FROM node:22-alpine
 
-# Accept database configuration as build arguments
+# NOTE: per-repo build args (DB_*) are declared right before first use, not
+# here - early declaration would bust the npm/prisma layer cache for every
+# new module repo (classic builder folds ARG values into RUN cache keys).
 ARG NPM_REGISTRY=http://verdaccio:4873
-ARG DB_HOST
-ARG DB_NAME
-ARG DB_USERNAME
-ARG DB_PASSWORD
 
 # Configure npm registry for Verdaccio cache
 RUN npm config set registry "$NPM_REGISTRY" && \
@@ -30,6 +28,13 @@ RUN npx prisma generate
 
 # Copy application code
 COPY . .
+
+# Per-repo database configuration (declared here, not at the top -
+# see the note under FROM)
+ARG DB_HOST
+ARG DB_NAME
+ARG DB_USERNAME
+ARG DB_PASSWORD
 
 # Create .env with database URL (file is gitignored so must be generated at build time)
 RUN echo "DATABASE_URL=\"mysql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:3306/${DB_NAME}\"" > .env

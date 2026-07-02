@@ -1,11 +1,9 @@
 FROM node:22-alpine
 
-# Accept database configuration as build arguments
+# NOTE: per-repo build args (MONGO_*) are declared right before first use,
+# not here - early declaration would bust the npm layer cache for every new
+# module repo (classic builder folds ARG values into RUN cache keys).
 ARG NPM_REGISTRY=http://verdaccio:4873
-ARG MONGO_HOST
-ARG MONGO_DB
-ARG MONGO_USER
-ARG MONGO_PASS
 
 # Configure npm registry for Verdaccio cache
 RUN npm config set registry "$NPM_REGISTRY" && \
@@ -19,6 +17,13 @@ RUN for i in 1 2 3; do \
         sleep $((i*3)); \
     done
 COPY . .
+
+# Per-repo database configuration (declared here, not at the top -
+# see the note under FROM)
+ARG MONGO_HOST
+ARG MONGO_DB
+ARG MONGO_USER
+ARG MONGO_PASS
 
 # Force correct values in .env (overrides any competitor changes)
 RUN sed -i "s|^MONGO_URI=.*|MONGO_URI=\"mongodb://${MONGO_USER}:${MONGO_PASS}@${MONGO_HOST}:27017/${MONGO_DB}?authSource=admin\"|" .env && \
