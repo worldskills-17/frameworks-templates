@@ -76,16 +76,23 @@ RUN if [ -n "$COMPOSER_PROXY" ]; then \
 # which lives in require-dev; running with --no-dev breaks `php artisan db:seed`
 # during competition setup. Image grows ~10MB; the tradeoff is correctness.
 
-# Copy package files for Node.js dependencies
-COPY package.json package-lock.json* ./
+# Copy package files for Node.js dependencies (optional - a Blade-only app
+# with no compiled assets may have no package.json at all). composer.json is
+# re-listed as an anchor: the classic builder rejects a COPY where every
+# pattern matches zero files.
+COPY composer.json package.json* package-lock.json* ./
 
 # Configure npm to use Verdaccio cache (if NPM_REGISTRY provided)
 ARG NPM_REGISTRY
-RUN if [ -n "$NPM_REGISTRY" ]; then \
-        npm config set registry "$NPM_REGISTRY" && \
-        npm config set strict-ssl false; \
-    fi && \
-    for i in 1 2 3; do npm install --loglevel error && break; [ "$i" = "3" ] && exit 1; sleep $((i*3)); done
+RUN if [ -f package.json ]; then \
+        if [ -n "$NPM_REGISTRY" ]; then \
+            npm config set registry "$NPM_REGISTRY" && \
+            npm config set strict-ssl false; \
+        fi && \
+        for i in 1 2 3; do npm install --loglevel error && break; [ "$i" = "3" ] && exit 1; sleep $((i*3)); done; \
+    else \
+        echo "No package.json - skipping npm install"; \
+    fi
 
 # Copy application code
 COPY . .
@@ -101,10 +108,15 @@ RUN sed -i "s|^DB_DATABASE=.*|DB_DATABASE=${DB_NAME}|" .env && \
 # Generate Laravel APP_KEY automatically
 RUN php artisan key:generate --ansi --quiet
 
-# Build assets
-RUN npm run build \
-    && npm prune --production --silent 2>/dev/null \
-    && npm cache clean --force --silent 2>/dev/null
+# Build assets (skipped when there is no package.json or no build script -
+# the app then serves its CSS/JS straight from public/)
+RUN if [ -f package.json ] && node -e "p=require('./package.json');process.exit(p.scripts&&p.scripts.build?0:1)"; then \
+        npm run build \
+        && npm prune --production --silent 2>/dev/null \
+        && npm cache clean --force --silent 2>/dev/null; \
+    else \
+        echo "No package.json build script - skipping asset build"; \
+    fi
 
 # Set proper permissions
 RUN chown -R www-data:www-data /var/www/html

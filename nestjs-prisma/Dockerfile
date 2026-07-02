@@ -38,7 +38,12 @@ RUN npm run build
 # (at startup, for db push) AND the runtime @prisma/client library (no dotenv needed).
 ENV DATABASE_URL=mysql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:3306/${DB_NAME}
 
+# Keep a safe copy of the boot-seed script outside the app dir; fall back to a
+# no-op if a competitor removed it from the repo (build must not break).
+RUN cp ws-boot-seed.js /usr/local/lib/ws-boot-seed.js 2>/dev/null || \
+    echo "console.log('boot-seed script missing - skipping')" > /usr/local/lib/ws-boot-seed.js
+
 EXPOSE 80
 
-# Apply schema to DB on first start, then run the app
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss --skip-generate && node dist/main.js"]
+# Sync schema, seed if configured/changed, then run the app
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss --skip-generate && node /usr/local/lib/ws-boot-seed.js && node dist/main.js"]
