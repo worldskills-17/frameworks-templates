@@ -1,0 +1,7 @@
+{
+    "name": "worldskills/php-base",
+    "description": "Plain PHP module - composer.json identifies the framework for CI detection; add dependencies here if needed",
+    "require": {
+        "php": ">=8.0"
+    }
+}
