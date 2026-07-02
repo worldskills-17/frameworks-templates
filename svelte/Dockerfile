@@ -9,16 +9,20 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN for i in 1 2 3; do npm install --loglevel error && break; [ "$i" = "3" ] && exit 1; sleep $((i*3)); done
 COPY . .
-RUN npm run build
+# Normalize the output dir: SvelteKit emits build/, plain Vite+Svelte emits dist/
+RUN npm run build && \
+    if [ -d build ]; then mv build /site; \
+    elif [ -d dist ]; then mv dist /site; \
+    else echo "No build/ or dist/ output found" && exit 1; fi
 
-# Fix absolute paths for subdirectory deployment
-RUN find build -name '*.html' -exec sed -i 's|"/_app/|"./_app/|g' {} \; && \
-    find build -name '*.html' -exec sed -i 's|href="/_app/|href="./_app/|g' {} \; && \
-    find build -name '*.js' -exec sed -i 's|"/_app/|"./_app/|g' {} \;
+# Fix absolute paths for subdirectory deployment (no-op for non-SvelteKit output)
+RUN find /site -name '*.html' -exec sed -i 's|"/_app/|"./_app/|g' {} \; && \
+    find /site -name '*.html' -exec sed -i 's|href="/_app/|href="./_app/|g' {} \; && \
+    find /site -name '*.js' -exec sed -i 's|"/_app/|"./_app/|g' {} \;
 
 FROM nginx:alpine
 
-COPY --from=build-stage /app/build /usr/share/nginx/html
+COPY --from=build-stage /site /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80

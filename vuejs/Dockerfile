@@ -9,11 +9,15 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN for i in 1 2 3; do npm install --loglevel error && break; [ "$i" = "3" ] && exit 1; sleep $((i*3)); done
 COPY . .
-RUN npm run build
+# Normalize the output dir: Vite/Vue CLI emit dist/, other scaffolds may emit build/
+RUN npm run build && \
+    if [ -d dist ]; then mv dist /site; \
+    elif [ -d build ]; then mv build /site; \
+    else echo "No dist/ or build/ output found" && exit 1; fi
 
 FROM nginx:alpine
 
-COPY --from=build-stage /app/dist /usr/share/nginx/html
+COPY --from=build-stage /site /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
