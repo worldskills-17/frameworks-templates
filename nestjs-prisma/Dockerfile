@@ -48,4 +48,4 @@ RUN cp ws-boot-seed.js /usr/local/lib/ws-boot-seed.js 2>/dev/null || \
 EXPOSE 80
 
 # Sync schema, seed if configured/changed, then run the app
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss --skip-generate && node /usr/local/lib/ws-boot-seed.js && node dist/main.js"]
+CMD ["sh", "-c", "if [ \"$WS_MARKING\" = 1 ]; then echo 'Marking mode (WS_MARKING=1) - skipping prisma db push + seed; serving restored DB as-is'; else npx prisma db push --accept-data-loss --skip-generate && node /usr/local/lib/ws-boot-seed.js; fi && node dist/main.js"]

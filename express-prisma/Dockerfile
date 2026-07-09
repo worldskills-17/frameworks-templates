@@ -48,4 +48,4 @@ EXPOSE 80
 
 # Sync schema on every start (was missing - siblings nestjs/nextjs-prisma
 # already did this), seed if configured/changed, then run the app
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss --skip-generate && node /usr/local/lib/ws-boot-seed.js && node src/server.js"]
+CMD ["sh", "-c", "if [ \"$WS_MARKING\" = 1 ]; then echo 'Marking mode (WS_MARKING=1) - skipping prisma db push + seed; serving restored DB as-is'; else npx prisma db push --accept-data-loss --skip-generate && node /usr/local/lib/ws-boot-seed.js; fi && node src/server.js"]

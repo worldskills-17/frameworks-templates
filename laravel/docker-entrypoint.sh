@@ -92,6 +92,11 @@ try {
 } catch (Throwable $e) { fwrite(STDERR, 'hash store skipped: ' . $e->getMessage() . "\n"); }
 PHPEOF
 
+# Marking mode: serve the restored database exactly as captured - never
+# migrate/seed/rebuild (a wrong-provenance image must not wipe marked data).
+if [ "${WS_MARKING:-0}" = "1" ]; then
+    echo "Marking mode (WS_MARKING=1) - serving restored database as-is; skipping migrations/drift rebuild"
+else
 STATE=""
 for i in 1 2 3 4 5 6 7 8 9 10; do
     STATE=$(php /tmp/ws-drift-check.php 2>/dev/null | grep -oE 'WS_(FIRST_BOOT|ADOPT|DRIFT|CLEAN)' | head -1)
@@ -146,6 +151,7 @@ done
 if [ -n "$MISSING" ]; then
     echo "[WARN] Missing tables:$MISSING - running migrate:fresh"
     php artisan migrate:fresh --force 2>&1 | tail -5
+fi
 fi
 
 echo "Starting Apache..."

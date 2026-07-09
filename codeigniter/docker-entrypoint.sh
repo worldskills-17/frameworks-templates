@@ -7,6 +7,12 @@ echo "=== CodeIgniter 4 Container Starting ==="
 # Run migrations in background so Apache starts immediately
 (
     sleep 3
+    # Marking mode: serve the restored database exactly as captured - never
+    # migrate/seed/rebuild (a wrong-provenance image must not wipe marked data).
+    if [ "${WS_MARKING:-0}" = "1" ]; then
+        echo "  Marking mode (WS_MARKING=1) - serving restored database as-is; skipping migrations/seed"
+        exit 0
+    fi
     DB_HOST=$(grep "^database.default.hostname" /var/www/html/.env | cut -d'=' -f2 | tr -d ' ')
     DB_NAME=$(grep "^database.default.database" /var/www/html/.env | cut -d'=' -f2 | tr -d ' ')
     DB_USER=$(grep "^database.default.username" /var/www/html/.env | cut -d'=' -f2 | tr -d ' ')

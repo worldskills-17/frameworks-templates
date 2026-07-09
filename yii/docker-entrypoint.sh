@@ -8,6 +8,13 @@ echo "=== Yii2 Container Starting ==="
 (
     sleep 3
 
+    # Marking mode: serve the restored database exactly as captured - never
+    # migrate/rebuild (a wrong-provenance image must not wipe marked data).
+    if [ "${WS_MARKING:-0}" = "1" ]; then
+        echo "  Marking mode (WS_MARKING=1) - serving restored database as-is; skipping migrations"
+        exit 0
+    fi
+
     # --- Migration drift failsafe ------------------------------------------
     # Yii never re-runs a migration whose class name is already recorded in
     # the `migration` table. A competitor who edits or deletes an
