@@ -4,6 +4,6 @@ import { defineConfig } from "vite";
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: './',
+  base: '/', // absolute — apps deploy at domain root; './' white-pages on nested routes
   plugins: [react(), tailwindcss()],
 });
