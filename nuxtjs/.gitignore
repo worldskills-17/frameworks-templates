@@ -1,0 +1,13 @@
+# Nuxt dev/build outputs
+node_modules
+.nuxt
+.output
+.data
+dist
+
+# misc
+.DS_Store
+*.log
+
+# env files (can opt-in for committing if needed)
+.env*
