@@ -38,12 +38,27 @@ WORKDIR /var/www/html/
 # Copy composer files first for better layer caching
 COPY composer.json composer.lock* ./
 
+# Trust self-signed SSL cert (for internal HTTPS services like Packeton/Gitea)
+# ssl-cert.crt is copied into build context by CI workflow
+COPY ssl-cert.crt* /tmp/
+RUN set -e; \
+    for i in 1 2 3; do \
+        apt-get update -qq && apt-get install -qq -y ca-certificates > /dev/null && break; \
+        [ "$i" = "3" ] && exit 1; \
+        sleep $((i*3)); \
+    done; \
+    rm -rf /var/lib/apt/lists/* \
+    && if [ -f /tmp/ssl-cert.crt ]; then \
+        cp /tmp/ssl-cert.crt /usr/local/share/ca-certificates/ssl-cert.crt && \
+        update-ca-certificates; \
+    fi
+
 # Configure Composer to use caching proxy (if provided)
-# secure-http disabled for internal HTTP mirror (Packeton on Docker network)
+# disable-tls for isolated network with self-signed certs
 ARG COMPOSER_PROXY
 RUN if [ -n "$COMPOSER_PROXY" ]; then \
         composer config --global repo.packagist composer "$COMPOSER_PROXY" && \
-        composer config --global secure-http false; \
+        composer config --global disable-tls true; \
     fi && \
     for i in 1 2 3; do \
         composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --quiet && break; \
