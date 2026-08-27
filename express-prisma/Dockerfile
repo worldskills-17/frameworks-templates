@@ -29,15 +29,17 @@ RUN npx prisma generate
 # Copy application code
 COPY . .
 
-# Per-repo database configuration (declared here, not at the top -
-# see the note under FROM)
-ARG DB_HOST
-ARG DB_NAME
-ARG DB_USERNAME
-ARG DB_PASSWORD
+# Per-repo database URL (declared here, not at the top - see the note under FROM).
+# DATABASE_URL comes from the module's provisioned secret and is already
+# engine-correct (mysql:// or postgresql://...:5432, URL-encoded password), so ONE
+# prisma template serves any SQL engine. schema.prisma's datasource provider is
+# pinned to match by the platform (db_prisma_set_provider).
+ARG DATABASE_URL
 
-# Create .env with database URL (file is gitignored so must be generated at build time)
-RUN echo "DATABASE_URL=\"mysql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:3306/${DB_NAME}\"" > .env
+# Create .env with the database URL (gitignored, so generated at build time). The
+# same DATABASE_URL is also injected as a runtime container env var (which takes
+# precedence), keeping build-time and runtime consistent.
+RUN echo "DATABASE_URL=\"${DATABASE_URL}\"" > .env
 
 # Keep a safe copy of the boot-seed script outside the app dir; fall back to a
 # no-op if a competitor removed it from the repo (build must not break).

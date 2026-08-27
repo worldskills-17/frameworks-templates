@@ -31,11 +31,11 @@ COPY . .
 # Bake DATABASE_URL into the image env so it's available to the Prisma CLI (db push
 # at startup) and the runtime @prisma/client. next build does not connect to the DB
 # because the API routes are forced dynamic.
-ARG DB_HOST
-ARG DB_NAME
-ARG DB_USERNAME
-ARG DB_PASSWORD
-ENV DATABASE_URL=mysql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:3306/${DB_NAME}
+# DATABASE_URL comes from the module's provisioned secret and is already
+# engine-correct (mysql:// or postgresql://...:5432, URL-encoded), so ONE prisma
+# template serves any SQL engine; schema.prisma's provider is pinned to match.
+ARG DATABASE_URL
+ENV DATABASE_URL=${DATABASE_URL}
 
 RUN npm run build
 
