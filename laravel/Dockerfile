@@ -102,6 +102,11 @@ ARG DB_USERNAME
 ARG DB_PASSWORD
 ARG DB_HOST
 ARG APP_URL
+# Engine-aware: default to mysql:3306 so unset (mysql) builds are unchanged; the
+# workflow passes pgsql/5432 for Postgres modules so the baked .env is correct on
+# the FIRST deployment (before the competitor pushes).
+ARG DB_CONNECTION=mysql
+ARG DB_PORT=3306
 
 # Force correct values in .env (overrides any competitor changes)
 RUN sed -i "s|^DB_DATABASE=.*|DB_DATABASE=${DB_NAME}|" .env && \
@@ -109,7 +114,8 @@ RUN sed -i "s|^DB_DATABASE=.*|DB_DATABASE=${DB_NAME}|" .env && \
     sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=${DB_PASSWORD}|" .env && \
     sed -i "s|^DB_HOST=.*|DB_HOST=${DB_HOST}|" .env && \
     sed -i "s|^APP_URL=.*|APP_URL=${APP_URL}|" .env && \
-    sed -i "s|^DB_CONNECTION=.*|DB_CONNECTION=mysql|" .env
+    sed -i "s|^DB_CONNECTION=.*|DB_CONNECTION=${DB_CONNECTION}|" .env && \
+    sed -i "s|^DB_PORT=.*|DB_PORT=${DB_PORT}|" .env
 
 # Generate Laravel APP_KEY automatically
 RUN php artisan key:generate --ansi --quiet
