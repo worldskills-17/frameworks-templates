@@ -7,6 +7,15 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## This template
+
+Laravel 13 on PHP 8.4 with MySQL auto-configuration (database credentials and `APP_URL` are set
+when the image is built), Passport API authentication (`auth:api` guard; signing keys are
+generated when the container starts) and roles and permissions (spatie/laravel-permission 8,
+`HasRoles` on the `User` model). Migrations and seeders run automatically on deploy; editing an
+already-deployed migration or a seeder rebuilds the database (`migrate:fresh --seed`). Tests use
+Pest 5. Local development needs PHP 8.4 and Composer 2.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
