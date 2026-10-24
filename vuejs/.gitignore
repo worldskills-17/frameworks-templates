@@ -28,3 +28,11 @@ coverage
 *.sw?
 
 *.tsbuildinfo
+
+.eslintcache
+
+# Vitest
+__screenshots__/
+
+# Vite
+*.timestamp-*-*.mjs
