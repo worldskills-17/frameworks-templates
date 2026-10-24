@@ -4,14 +4,32 @@
 //   - first boot with a seed configured  -> seed
 //   - seed files changed since last boot -> full reset (db push --force-reset)
 //     then reseed, mirroring what the competitor does locally
-// Watched files: the package.json "prisma.seed" command + everything under
-// prisma/ except schema.prisma. Hash is stored in the ws_seed_hash table
-// (visible in phpMyAdmin). Always exits 0 - the app must start regardless.
+// The seed command is read from prisma.config.ts (migrations.seed) with the
+// same loader the Prisma 7 CLI uses. Watched files: the seed command +
+// everything under prisma/ except schema.prisma. Hash is stored in the
+// ws_seed_hash table (visible in phpMyAdmin). Always exits 0 - the app must
+// start regardless.
+//
+// `prisma db push --accept-data-loss` drops tables that are not in the schema,
+// ws_seed_hash included, so the stored hash is read before the push:
+//   node ws-boot-seed.js --before-push   (saves the stored hash to a file)
+//   npx prisma db push --accept-data-loss
+//   node ws-boot-seed.js                 (seeds if needed, rewrites the hash)
 'use strict';
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const os = require('os');
 const { execSync } = require('child_process');
+
+const appDir = process.cwd();
+const beforePush = process.argv.includes('--before-push');
+const handoffFile = path.join(os.tmpdir(), 'ws-seed-hash-before-push');
+
+// Skip notices are printed by the main run only, not by --before-push
+function notice(msg) {
+  if (!beforePush) console.log(msg);
+}
 
 function walk(dir, files) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
@@ -21,14 +39,62 @@ function walk(dir, files) {
   }
 }
 
+function appRequire(name, extraPaths) {
+  return require(require.resolve(name, { paths: [...(extraPaths || []), appDir] }));
+}
+
+// MySQL connection for the hash table, using the mariadb driver that
+// @prisma/adapter-mariadb depends on (the generated Prisma Client is
+// TypeScript at a project-defined path, so it is not loaded here)
+function connect(databaseUrl) {
+  const mariadb = appRequire('mariadb', [path.join(appDir, 'node_modules', '@prisma', 'adapter-mariadb')]);
+  const u = new URL(databaseUrl);
+  return mariadb.createConnection({
+    host: u.hostname,
+    port: u.port ? Number(u.port) : 3306,
+    user: decodeURIComponent(u.username),
+    password: decodeURIComponent(u.password),
+    database: decodeURIComponent(u.pathname.replace(/^\//, '')),
+    allowPublicKeyRetrieval: true
+  });
+}
+
+async function withConnection(databaseUrl, fn) {
+  const conn = await connect(databaseUrl);
+  try {
+    await conn.query('CREATE TABLE IF NOT EXISTS ws_seed_hash (id INT PRIMARY KEY, hash CHAR(64) NOT NULL)');
+    return await fn(conn);
+  } finally {
+    await conn.end();
+  }
+}
+
 (async () => {
   try {
-    const pkg = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'));
-    const seedCmd = pkg.prisma && pkg.prisma.seed;
-    if (!seedCmd) {
-      console.log('No prisma.seed configured - skipping seed step');
+    if (beforePush && fs.existsSync(handoffFile)) fs.unlinkSync(handoffFile);
+    const { loadConfigFromFile } = appRequire('@prisma/config', [path.join(appDir, 'node_modules', 'prisma')]);
+    const loaded = await loadConfigFromFile({ configRoot: appDir });
+    if (loaded.error) {
+      notice('[WARN] could not load prisma.config.ts (' + loaded.error._tag + ') - skipping seed step');
       return;
     }
+    const config = loaded.config;
+    const seedCmd = config.migrations && config.migrations.seed;
+    if (!seedCmd) {
+      const pkg = JSON.parse(fs.readFileSync(path.join(appDir, 'package.json'), 'utf8'));
+      if (pkg.prisma && pkg.prisma.seed) {
+        notice('[WARN] package.json "prisma.seed" is ignored by Prisma 7 - move it to migrations.seed in prisma.config.ts');
+      }
+      notice('No seed command configured - skipping seed step');
+      return;
+    }
+    // Loading the config runs its .env loading, so .env values are available
+    const databaseUrl = (config.datasource && config.datasource.url) || process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      notice('[WARN] no datasource url configured - skipping seed step');
+      return;
+    }
+
     const h = crypto.createHash('sha256');
     h.update('cmd:' + seedCmd + ';');
     const files = [];
@@ -38,23 +104,31 @@ function walk(dir, files) {
     }
     const hash = h.digest('hex');
 
-    const { PrismaClient } = require(path.join(process.cwd(), 'node_modules', '@prisma/client'));
-    const prisma = new PrismaClient();
-    await prisma.$executeRawUnsafe(
-      'CREATE TABLE IF NOT EXISTS ws_seed_hash (id INT PRIMARY KEY, hash CHAR(64) NOT NULL)');
-    const rows = await prisma.$queryRawUnsafe('SELECT hash FROM ws_seed_hash WHERE id = 1');
-    const stored = rows.length ? rows[0].hash : null;
+    const readStored = () => withConnection(databaseUrl, async (conn) => {
+      const rows = await conn.query('SELECT hash FROM ws_seed_hash WHERE id = 1');
+      return rows.length ? rows[0].hash : null;
+    });
+
+    if (beforePush) {
+      fs.writeFileSync(handoffFile, (await readStored()) || '');
+      return;
+    }
+    let stored;
+    if (fs.existsSync(handoffFile)) {
+      stored = fs.readFileSync(handoffFile, 'utf8') || null;
+      fs.unlinkSync(handoffFile);
+    } else {
+      stored = await readStored();
+    }
     if (stored === hash) {
       console.log('Seed up to date');
-      await prisma.$disconnect();
+      await withConnection(databaseUrl, (conn) =>
+        conn.query('REPLACE INTO ws_seed_hash (id, hash) VALUES (1, ?)', [hash]));
       return;
     }
     if (stored !== null) {
       console.log('Seed files changed - resetting database...');
-      await prisma.$disconnect();
-      execSync('npx prisma db push --force-reset --accept-data-loss --skip-generate', { stdio: 'inherit' });
-    } else {
-      await prisma.$disconnect();
+      execSync('npx prisma db push --force-reset --accept-data-loss', { stdio: 'inherit' });
     }
     console.log('Running prisma db seed...');
     try {
@@ -62,12 +136,9 @@ function walk(dir, files) {
     } catch (e) {
       console.log('[WARN] prisma db seed failed - continuing');
     }
-    const prisma2 = new PrismaClient();
-    await prisma2.$executeRawUnsafe(
-      'CREATE TABLE IF NOT EXISTS ws_seed_hash (id INT PRIMARY KEY, hash CHAR(64) NOT NULL)');
-    await prisma2.$executeRawUnsafe("REPLACE INTO ws_seed_hash (id, hash) VALUES (1, '" + hash + "')");
-    await prisma2.$disconnect();
+    await withConnection(databaseUrl, (conn) =>
+      conn.query('REPLACE INTO ws_seed_hash (id, hash) VALUES (1, ?)', [hash]));
   } catch (e) {
-    console.log('[WARN] seed check skipped: ' + e.message);
+    console.log('[WARN] seed check skipped' + (beforePush ? ' (before push)' : '') + ': ' + e.message);
   }
 })();
