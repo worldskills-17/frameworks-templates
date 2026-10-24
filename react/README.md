@@ -1,11 +1,12 @@
 # React + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Competition template: React 19.3 with Vite 8, Tailwind CSS 4 and ESLint 10 (flat config).
+The Docker build uses `node:24` and nginx serves the built app at the domain root (deep links
+fall back to `index.html`). Local development needs Node 20.19+ or 22.12+.
 
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- `npm run dev` - development server with hot reload
+- `npm run build` - production build into `dist/`
+- `npm run lint` - ESLint
 
 ## Expanding the ESLint configuration
 
