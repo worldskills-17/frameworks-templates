@@ -1,3 +1,6 @@
+// Load .env for local development (Prisma 7 no longer does this itself).
+// Variables already set in the environment take precedence.
+import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
@@ -9,4 +12,4 @@ async function bootstrap() {
   console.log(`NestJS+Prisma listening on http://0.0.0.0:${port}`);
 }
 
-bootstrap();
+void bootstrap();

@@ -20,10 +20,12 @@ COPY package.json package-lock.json* ./
 # Install dependencies — retry on transient registry errors
 RUN for i in 1 2 3; do npm install --loglevel error && break; [ "$i" = "3" ] && exit 1; sleep $((i*3)); done
 
-# Copy Prisma schema
+# Copy Prisma schema and config (package.json is listed so the wildcard
+# always has a match - the classic builder fails on an empty COPY glob)
 COPY prisma ./prisma/
+COPY package.json prisma.config.* ./
 
-# Generate Prisma Client
+# Generate Prisma Client (into src/generated/prisma, compiled by nest build)
 RUN npx prisma generate
 
 # Copy application code
@@ -33,7 +35,8 @@ COPY . .
 RUN npm run build
 
 # Bake DATABASE_URL into the image env so it's available to both the Prisma CLI
-# (at startup, for db push) AND the runtime @prisma/client library (no dotenv needed).
+# (at startup, for db push - read via prisma.config.ts) AND the app's driver
+# adapter (src/prisma/prisma.service.ts). No .env file needed.
 # DATABASE_URL comes from the module's provisioned secret and is already
 # engine-correct (mysql:// or postgresql://...:5432, URL-encoded), so ONE prisma
 # template serves any SQL engine; schema.prisma's provider is pinned to match.
@@ -47,5 +50,7 @@ RUN cp ws-boot-seed.js /usr/local/lib/ws-boot-seed.js 2>/dev/null || \
 
 EXPOSE 80
 
-# Sync schema, seed if configured/changed, then run the app
-CMD ["sh", "-c", "if [ \"$WS_MARKING\" = 1 ]; then echo 'Marking mode (WS_MARKING=1) - skipping prisma db push + seed; serving restored DB as-is'; else npx prisma db push --accept-data-loss --skip-generate && node /usr/local/lib/ws-boot-seed.js; fi && node dist/main.js"]
+# Sync schema on every start, seed if configured/changed, then run the app.
+# The seed hash is read before db push, which drops tables not in the schema
+# (ws_seed_hash included) - see ws-boot-seed.js.
+CMD ["sh", "-c", "if [ \"$WS_MARKING\" = 1 ]; then echo 'Marking mode (WS_MARKING=1) - skipping prisma db push + seed; serving restored DB as-is'; else node /usr/local/lib/ws-boot-seed.js --before-push && npx prisma db push --accept-data-loss && node /usr/local/lib/ws-boot-seed.js; fi && node dist/main.js"]
