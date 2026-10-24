@@ -1,11 +1,11 @@
 # NestJS + Prisma Template
 
-NestJS skeleton with Prisma ORM + MySQL for WorldSkills UK competitions. TypeScript, Express adapter, listens on port 80.
+NestJS skeleton with Prisma ORM + MySQL or PostgreSQL for WorldSkills UK competitions. TypeScript, Express adapter, listens on port 80.
 
 ## Versions
 
 - NestJS 12 (`@nestjs/core`, `@nestjs/common`, `@nestjs/platform-express`) on Express 5
-- Prisma ORM 7 (`prisma`, `@prisma/client`) with the `@prisma/adapter-mariadb` driver adapter (works with MySQL)
+- Prisma ORM 7 (`prisma`, `@prisma/client`) with the `@prisma/adapter-mariadb` (MySQL) and `@prisma/adapter-pg` (PostgreSQL) driver adapters
 - TypeScript 6 (the Nest 12 CLI does not support TypeScript 7 yet)
 - Node.js 22 (Docker image `node:22-alpine`)
 
@@ -13,7 +13,7 @@ NestJS skeleton with Prisma ORM + MySQL for WorldSkills UK competitions. TypeScr
 
 - `prisma/schema.prisma` - models. The `prisma-client` generator writes the client to `src/generated/prisma` (gitignored, compiled by `nest build`); import it with `import { PrismaClient } from '../generated/prisma/client'`.
 - `prisma.config.ts` - datasource URL (`DATABASE_URL`), migrations path and seed command. Prisma 7 no longer reads `url` from `schema.prisma` or `"prisma"` from `package.json`, and no longer loads `.env` by itself (`prisma.config.ts` and `src/main.ts` import `dotenv/config`).
-- `src/prisma/prisma.service.ts` - `PrismaClient` with the MariaDB driver adapter (required in Prisma 7).
+- `src/prisma/prisma.service.ts` - `PrismaClient` with the driver adapter chosen from the `DATABASE_URL` scheme (required in Prisma 7).
 - `prisma db push` and `prisma migrate dev` no longer run `prisma generate`; run `npx prisma generate` after editing the schema.
 
 ## Seeding

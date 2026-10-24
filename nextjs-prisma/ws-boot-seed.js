@@ -7,8 +7,8 @@
 // The seed command is read from prisma.config.ts (migrations.seed) with the
 // same loader the Prisma 7 CLI uses. Watched files: the seed command +
 // everything under prisma/ except schema.prisma. Hash is stored in the
-// ws_seed_hash table (visible in phpMyAdmin). Always exits 0 - the app must
-// start regardless.
+// ws_seed_hash table (MySQL or PostgreSQL, from the DATABASE_URL scheme).
+// Always exits 0 - the app must start regardless.
 //
 // `prisma db push --accept-data-loss` drops tables that are not in the schema,
 // ws_seed_hash included, so the stored hash is read before the push:
@@ -43,13 +43,32 @@ function appRequire(name, extraPaths) {
   return require(require.resolve(name, { paths: [...(extraPaths || []), appDir] }));
 }
 
-// MySQL connection for the hash table, using the mariadb driver that
-// @prisma/adapter-mariadb depends on (the generated Prisma Client is
-// TypeScript at a project-defined path, so it is not loaded here)
-function connect(databaseUrl) {
-  const mariadb = appRequire('mariadb', [path.join(appDir, 'node_modules', '@prisma', 'adapter-mariadb')]);
+// Hash table access for the database in DATABASE_URL, using the driver its Prisma
+// adapter already depends on (the generated Prisma Client is TypeScript at a
+// project-defined path, so it is not loaded here):
+// - PostgreSQL: pg (@prisma/adapter-pg)
+// - MySQL: mariadb (@prisma/adapter-mariadb)
+const CREATE_TABLE = 'CREATE TABLE IF NOT EXISTS ws_seed_hash (id INT PRIMARY KEY, hash CHAR(64) NOT NULL)';
+
+async function openHashStore(databaseUrl) {
   const u = new URL(databaseUrl);
-  return mariadb.createConnection({
+  if (u.protocol === 'postgres:' || u.protocol === 'postgresql:') {
+    const { Client } = appRequire('pg', [path.join(appDir, 'node_modules', '@prisma', 'adapter-pg')]);
+    const client = new Client({ connectionString: databaseUrl });
+    await client.connect();
+    await client.query(CREATE_TABLE);
+    return {
+      get: async () => {
+        const res = await client.query('SELECT hash FROM ws_seed_hash WHERE id = 1');
+        return res.rows.length ? res.rows[0].hash : null;
+      },
+      set: (hash) => client.query(
+        'INSERT INTO ws_seed_hash (id, hash) VALUES (1, $1) ON CONFLICT (id) DO UPDATE SET hash = EXCLUDED.hash', [hash]),
+      close: () => client.end()
+    };
+  }
+  const mariadb = appRequire('mariadb', [path.join(appDir, 'node_modules', '@prisma', 'adapter-mariadb')]);
+  const conn = await mariadb.createConnection({
     host: u.hostname,
     port: u.port ? Number(u.port) : 3306,
     user: decodeURIComponent(u.username),
@@ -57,15 +76,23 @@ function connect(databaseUrl) {
     database: decodeURIComponent(u.pathname.replace(/^\//, '')),
     allowPublicKeyRetrieval: true
   });
+  await conn.query(CREATE_TABLE);
+  return {
+    get: async () => {
+      const rows = await conn.query('SELECT hash FROM ws_seed_hash WHERE id = 1');
+      return rows.length ? rows[0].hash : null;
+    },
+    set: (hash) => conn.query('REPLACE INTO ws_seed_hash (id, hash) VALUES (1, ?)', [hash]),
+    close: () => conn.end()
+  };
 }
 
-async function withConnection(databaseUrl, fn) {
-  const conn = await connect(databaseUrl);
+async function withHashStore(databaseUrl, fn) {
+  const store = await openHashStore(databaseUrl);
   try {
-    await conn.query('CREATE TABLE IF NOT EXISTS ws_seed_hash (id INT PRIMARY KEY, hash CHAR(64) NOT NULL)');
-    return await fn(conn);
+    return await fn(store);
   } finally {
-    await conn.end();
+    await store.close();
   }
 }
 
@@ -104,10 +131,7 @@ async function withConnection(databaseUrl, fn) {
     }
     const hash = h.digest('hex');
 
-    const readStored = () => withConnection(databaseUrl, async (conn) => {
-      const rows = await conn.query('SELECT hash FROM ws_seed_hash WHERE id = 1');
-      return rows.length ? rows[0].hash : null;
-    });
+    const readStored = () => withHashStore(databaseUrl, (store) => store.get());
 
     if (beforePush) {
       fs.writeFileSync(handoffFile, (await readStored()) || '');
@@ -122,8 +146,7 @@ async function withConnection(databaseUrl, fn) {
     }
     if (stored === hash) {
       console.log('Seed up to date');
-      await withConnection(databaseUrl, (conn) =>
-        conn.query('REPLACE INTO ws_seed_hash (id, hash) VALUES (1, ?)', [hash]));
+      await withHashStore(databaseUrl, (store) => store.set(hash));
       return;
     }
     if (stored !== null) {
@@ -136,8 +159,7 @@ async function withConnection(databaseUrl, fn) {
     } catch (e) {
       console.log('[WARN] prisma db seed failed - continuing');
     }
-    await withConnection(databaseUrl, (conn) =>
-      conn.query('REPLACE INTO ws_seed_hash (id, hash) VALUES (1, ?)', [hash]));
+    await withHashStore(databaseUrl, (store) => store.set(hash));
   } catch (e) {
     console.log('[WARN] seed check skipped' + (beforePush ? ' (before push)' : '') + ': ' + e.message);
   }
