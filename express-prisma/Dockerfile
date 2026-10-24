@@ -20,10 +20,12 @@ COPY package.json package-lock.json* ./
 # Install dependencies — retry on transient registry errors
 RUN for i in 1 2 3; do npm install --loglevel error && break; [ "$i" = "3" ] && exit 1; sleep $((i*3)); done
 
-# Copy Prisma schema
+# Copy Prisma schema and config (package.json is listed so the wildcard
+# always has a match - the classic builder fails on an empty COPY glob)
 COPY prisma ./prisma/
+COPY package.json prisma.config.* ./
 
-# Generate Prisma Client
+# Generate Prisma Client (into the output path set in schema.prisma)
 RUN npx prisma generate
 
 # Copy application code
@@ -48,6 +50,7 @@ RUN cp ws-boot-seed.js /usr/local/lib/ws-boot-seed.js 2>/dev/null || \
 
 EXPOSE 80
 
-# Sync schema on every start (was missing - siblings nestjs/nextjs-prisma
-# already did this), seed if configured/changed, then run the app
-CMD ["sh", "-c", "if [ \"$WS_MARKING\" = 1 ]; then echo 'Marking mode (WS_MARKING=1) - skipping prisma db push + seed; serving restored DB as-is'; else npx prisma db push --accept-data-loss --skip-generate && node /usr/local/lib/ws-boot-seed.js; fi && node src/server.js"]
+# Sync schema on every start, seed if configured/changed, then run the app.
+# The seed hash is read before db push, which drops tables not in the schema
+# (ws_seed_hash included) - see ws-boot-seed.js.
+CMD ["sh", "-c", "if [ \"$WS_MARKING\" = 1 ]; then echo 'Marking mode (WS_MARKING=1) - skipping prisma db push + seed; serving restored DB as-is'; else node /usr/local/lib/ws-boot-seed.js --before-push && npx prisma db push --accept-data-loss && node /usr/local/lib/ws-boot-seed.js; fi && node src/server.js"]
