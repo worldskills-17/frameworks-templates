@@ -6,6 +6,14 @@ echo "=== Laravel Container Starting ==="
 sleep 3
 
 php artisan storage:link --force 2>/dev/null || true
+
+# Passport signing keys (git-ignored, so generated in each container; tokens issued
+# before a redeploy stop validating). Apache runs as www-data and must read them.
+if [ ! -f storage/oauth-private.key ] || [ ! -f storage/oauth-public.key ]; then
+    php artisan passport:keys --force >/dev/null 2>&1 || echo "[WARN] passport:keys failed"
+fi
+chown www-data:www-data storage/oauth-*.key 2>/dev/null || true
+chmod 600 storage/oauth-*.key 2>/dev/null || true
 php artisan config:clear 2>/dev/null || true
 php artisan route:clear 2>/dev/null || true
 php artisan view:clear 2>/dev/null || true
@@ -115,7 +123,7 @@ case "$STATE" in
     WS_FIRST_BOOT)
         echo "Running migrations (first boot)..."
         for i in 1 2 3 4 5 6 7 8 9 10; do
-            if php artisan migrate --force 2>&1 | tee /tmp/migrate.log | grep -qE "Nothing to migrate|migrated"; then
+            if php artisan migrate --force 2>&1 | tee /tmp/migrate.log | grep -qE "Nothing to migrate|migrated|DONE"; then
                 echo "  OK"
                 break
             fi
@@ -129,7 +137,7 @@ case "$STATE" in
         # WS_CLEAN, or empty (DB unreachable - keep legacy retry behaviour)
         echo "Running migrations..."
         for i in 1 2 3 4 5 6 7 8 9 10; do
-            if php artisan migrate --force 2>&1 | tee /tmp/migrate.log | grep -qE "Nothing to migrate|migrated"; then
+            if php artisan migrate --force 2>&1 | tee /tmp/migrate.log | grep -qE "Nothing to migrate|migrated|DONE"; then
                 echo "  OK"
                 break
             fi
