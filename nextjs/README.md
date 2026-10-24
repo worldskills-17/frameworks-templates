@@ -1,4 +1,4 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+This is a [Next.js](https://nextjs.org) 16 project (App Router, React 19, Tailwind CSS 4, ESLint 10) bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started
 
@@ -14,23 +14,28 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:4200](http://localhost:4200) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+You can start editing the page by modifying `src/app/page.js`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+This project uses [`next/font`](https://nextjs.org/docs/app/getting-started/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## Next.js 16 notes
+
+- `next dev` and `next build` use Turbopack by default (no `--turbopack` flag needed).
+- `next lint` was removed: `npm run lint` runs the ESLint CLI with the flat config in `eslint.config.mjs`. `next build` no longer lints.
+- `cookies()`, `headers()`, `draftMode()`, `params` and `searchParams` are async only (`await` them).
+- `middleware.js` is now `proxy.js` (exported function `proxy`).
+- `next-pwa` is webpack-only. To use it, wrap the config in `next.config.mjs` and build with `next build --webpack`.
+
+## Database (optional)
+
+`DB_HOST`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD` (and `DATABASE_URL`) are available at runtime via `process.env`, so `mysql2` / `knex` can be used from route handlers and server components. Nothing connects automatically.
 
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
 
 - [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Upgrading to Next.js 16](https://nextjs.org/docs/app/guides/upgrading/version-16) - breaking changes from Next.js 15.
 - [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
