@@ -22,7 +22,7 @@ yarn-error.log*
 .env*.local
 
 # prisma
-/generated/prisma
+/src/generated/prisma
 
 # Editors
 .idea/
