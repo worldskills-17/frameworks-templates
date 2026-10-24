@@ -22,7 +22,7 @@ Pre-configured framework templates for offline competition environments.
 
 ### Backend (PHP)
 - **php** - Plain PHP with Apache
-- **laravel** - Laravel 12 with MySQL auto-configuration
+- **laravel** - Laravel 13 (PHP 8.4) with MySQL auto-configuration, Passport API auth and roles (spatie/laravel-permission) ready to use
 - **codeigniter** - CodeIgniter 4
 - **yii** - Yii 2
 
