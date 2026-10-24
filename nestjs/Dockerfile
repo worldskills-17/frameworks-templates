@@ -1,4 +1,4 @@
-FROM node:lts
+FROM node:24
 
 # Configure npm registry for Verdaccio cache
 ARG NPM_REGISTRY=http://verdaccio:4873

@@ -9,4 +9,4 @@ async function bootstrap() {
   console.log(`NestJS listening on http://0.0.0.0:${port}`);
 }
 
-bootstrap();
+void bootstrap();
