@@ -1,6 +1,6 @@
 # AngularBase
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.2.9.
+This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.2.4, with Tailwind CSS 4 (configured in `src/styles.css` via `@import 'tailwindcss';` and the PostCSS plugin in `.postcssrc.json`).
 
 ## Development server
 
@@ -11,6 +11,10 @@ ng serve
 ```
 
 Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+
+## Change detection
+
+The project uses the Angular 22 defaults: zoneless change detection (no `zone.js`) and `OnPush` for components that do not set `changeDetection`. Keep component state in signals (`signal()`, `computed()`, `resource()`) or use the `async` pipe so the view updates; plain field assignments inside callbacks such as `subscribe()` or `setTimeout()` do not trigger a re-render on their own.
 
 ## Code scaffolding
 
@@ -38,11 +42,13 @@ This will compile your project and store the build artifacts in the `dist/` dire
 
 ## Running unit tests
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
 
 ```bash
 ng test
 ```
+
+Tests run headless in jsdom; no browser is required. Use `ng test --watch=false` for a single run.
 
 ## Running end-to-end tests
 

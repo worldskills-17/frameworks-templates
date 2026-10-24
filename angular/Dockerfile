@@ -1,4 +1,4 @@
-FROM node:lts as build-stage
+FROM node:24 AS build-stage
 
 # Configure npm registry for Verdaccio cache
 ARG NPM_REGISTRY=http://verdaccio:4873
