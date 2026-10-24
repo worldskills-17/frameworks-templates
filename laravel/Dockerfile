@@ -44,8 +44,10 @@ WORKDIR /var/www/html/
 COPY composer.json composer.lock* ./
 
 # Trust self-signed SSL cert (for internal HTTPS services like Packeton/Gitea)
-# ssl-cert.crt is copied into build context by CI workflow
-COPY ssl-cert.crt* /tmp/
+# ssl-cert.crt is copied into build context by CI workflow. composer.json is listed
+# as an anchor: the classic builder rejects a COPY whose patterns all match nothing,
+# so a build without the cert must still get past this step.
+COPY composer.json ssl-cert.crt* /tmp/
 RUN set -e; \
     for i in 1 2 3; do \
         apt-get update -qq && apt-get install -qq -y ca-certificates > /dev/null && break; \
