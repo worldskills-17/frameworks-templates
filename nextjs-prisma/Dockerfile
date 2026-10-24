@@ -21,16 +21,19 @@ COPY package.json package-lock.json* ./
 # Install dependencies — retry on transient registry errors
 RUN for i in 1 2 3; do npm install --loglevel error && break; [ "$i" = "3" ] && exit 1; sleep $((i*3)); done
 
-# Copy Prisma schema and generate the client
+# Copy Prisma schema + config and generate the client (into src/generated/prisma).
+# package.json is listed so the prisma.config.* wildcard never matches nothing.
 COPY prisma ./prisma/
+COPY package.json prisma.config.* ./
 RUN npx prisma generate
 
 # Copy application code
 COPY . .
 
 # Bake DATABASE_URL into the image env so it's available to the Prisma CLI (db push
-# at startup) and the runtime @prisma/client. next build does not connect to the DB
-# because the API routes are forced dynamic.
+# at startup, read through prisma.config.ts) and the runtime client (driver adapter
+# in src/lib/prisma.js). next build does not connect to the DB because the API
+# routes are forced dynamic.
 # DATABASE_URL comes from the module's provisioned secret and is already
 # engine-correct (mysql:// or postgresql://...:5432, URL-encoded), so ONE prisma
 # template serves any SQL engine; schema.prisma's provider is pinned to match.
@@ -46,5 +49,7 @@ RUN cp ws-boot-seed.js /usr/local/lib/ws-boot-seed.js 2>/dev/null || \
 
 EXPOSE 80
 
-# Sync schema, seed if configured/changed, then serve
-CMD ["sh", "-c", "if [ \"$WS_MARKING\" = 1 ]; then echo 'Marking mode (WS_MARKING=1) - skipping prisma db push + seed; serving restored DB as-is'; else npx prisma db push --accept-data-loss --skip-generate && node /usr/local/lib/ws-boot-seed.js; fi && npm run start"]
+# Sync schema, seed if configured/changed, then serve.
+# The seed hash is read before db push, which drops tables not in the schema
+# (ws_seed_hash included) - see ws-boot-seed.js.
+CMD ["sh", "-c", "if [ \"$WS_MARKING\" = 1 ]; then echo 'Marking mode (WS_MARKING=1) - skipping prisma db push + seed; serving restored DB as-is'; else node /usr/local/lib/ws-boot-seed.js --before-push && npx prisma db push --accept-data-loss && node /usr/local/lib/ws-boot-seed.js; fi && npm run start"]

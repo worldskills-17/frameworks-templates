@@ -1,10 +1,11 @@
+// Prisma 7: the connection URL lives in prisma.config.ts, not here.
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "mysql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
