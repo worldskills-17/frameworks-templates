@@ -1,9 +1,8 @@
 import express from 'express';
 import cors from 'cors';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from './db.js';
 
 const app = express();
-const prisma = new PrismaClient();
 
 app.use(cors());
 app.use(express.json());
@@ -30,7 +29,8 @@ app.get('/api/users', async (req, res) => {
 
 app.post('/api/users', async (req, res) => {
     try {
-        const { email, name } = req.body;
+        // Express 5 leaves req.body undefined when no JSON body was sent
+        const { email, name } = req.body ?? {};
         const user = await prisma.user.create({
             data: { email, name }
         });
