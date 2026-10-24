@@ -1,4 +1,4 @@
-FROM node:lts as build-stage
+FROM node:24 AS build-stage
 
 # Configure npm registry for Verdaccio cache
 ARG NPM_REGISTRY=http://verdaccio:4873
@@ -14,11 +14,9 @@ RUN npm run build && \
     if [ -d build ]; then mv build /site; \
     elif [ -d dist ]; then mv dist /site; \
     else echo "No build/ or dist/ output found" && exit 1; fi
-
-# Fix absolute paths for subdirectory deployment (no-op for non-SvelteKit output)
-RUN find /site -name '*.html' -exec sed -i 's|"/_app/|"./_app/|g' {} \; && \
-    find /site -name '*.html' -exec sed -i 's|href="/_app/|href="./_app/|g' {} \; && \
-    find /site -name '*.js' -exec sed -i 's|"/_app/|"./_app/|g' {} \;
+# Asset paths are left as SvelteKit emits them: the app is served at the domain
+# root, and the SPA fallback page needs absolute /_app/ paths so nested routes
+# (e.g. /a/b) still load their scripts.
 
 FROM nginx:alpine
 
