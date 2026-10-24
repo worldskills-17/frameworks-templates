@@ -31,6 +31,9 @@ jobs:
         APP_URL: ${{ secrets.APP_URL }}
         COMPOSER_PROXY: ${{ secrets.COMPOSER_PROXY_URL }}
       run: |
+        # Copy SSL cert into build context so Dockerfile can COPY it
+        docker cp traefik:/certs/ssl-cert.crt ./ssl-cert.crt 2>/dev/null || \
+          docker cp traefik:/certs/ca.crt ./ssl-cert.crt 2>/dev/null || true
         DOCKER_BUILDKIT=0 docker build \
           --network traefik-network \
           --add-host=db.${DOMAIN}:${SERVER_IP} \
