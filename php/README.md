@@ -18,13 +18,17 @@ A vanilla PHP template for WorldSkills UK competitions. This template provides a
 
 ## Database Connection
 
-Database credentials are provided via environment variables:
+Database credentials are injected into the container by the platform. Read them with `getenv()`:
 
 ```php
-$db_host = getenv('DB_HOST') ?: 'db.worldskills.uk';
-$db_name = getenv('DB_NAME') ?: 'compXX_module_x';
-$db_user = getenv('DB_USER') ?: 'compXX';
-$db_pass = getenv('DB_PASSWORD') ?: 'your_password';
+$db_host = getenv('DB_HOST');
+$db_name = getenv('DB_NAME');
+$db_user = getenv('DB_USER');
+$db_pass = getenv('DB_PASSWORD');
+
+if ($db_host === false || $db_name === false || $db_user === false || $db_pass === false) {
+    throw new RuntimeException('Database environment variables are not set');
+}
 
 $pdo = new PDO(
     "mysql:host=$db_host;dbname=$db_name;charset=utf8mb4",
@@ -33,6 +37,12 @@ $pdo = new PDO(
     [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
 );
 ```
+
+Three things that cause an `Access denied for user ''@'...'` error:
+
+- **Use `getenv()`, not `$_ENV`.** In the official PHP image `$_ENV` is empty (`variables_order` does not include `E`), so `$_ENV['DB_USER']` returns nothing. `$_SERVER` does not hold these variables either.
+- **The variable is `DB_USER`, not `DB_USERNAME`.** `DB_USERNAME` is only the name of the build argument; inside the container it is exposed as `DB_USER`.
+- **Do not add hardcoded fallbacks** (`?: 'myuser'`). If a variable is missing you want the error, not a silent connection with the wrong credentials. For local development pass the variables to the container instead (see Local Development).
 
 ## Directory Structure
 
@@ -55,11 +65,12 @@ Create new PHP files in the `api/` directory:
 <?php
 header('Content-Type: application/json');
 
-// Database connection
+// Database connection (see Database Connection above)
 $pdo = new PDO(
-    "mysql:host=db.worldskills.uk;dbname=" . getenv('DB_NAME'),
+    "mysql:host=" . getenv('DB_HOST') . ";dbname=" . getenv('DB_NAME') . ";charset=utf8mb4",
     getenv('DB_USER'),
-    getenv('DB_PASSWORD')
+    getenv('DB_PASSWORD'),
+    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
 );
 
 // Query
@@ -75,12 +86,14 @@ echo json_encode([
 
 ## Environment Variables
 
-Set in your deployment environment (automatically configured in production):
+Set automatically by the platform when your repository is built. Read them with `getenv()`:
 
-- `DB_HOST` - Database host (db.worldskills.uk)
-- `DB_NAME` - Database name (compXX_module_x)
-- `DB_USER` - Database user (compXX)
-- `DB_PASSWORD` - Database password
+- `DB_HOST` - hostname of the shared MySQL server
+- `DB_NAME` - the database created for this module
+- `DB_USER` - database user
+- `DB_PASSWORD` - database password
+
+The values are shown on your landing page. Do not copy them into the code.
 
 ## Deployment
 
@@ -92,18 +105,21 @@ git commit -m "Update application"
 git push
 ```
 
-Your application will be available at:
-`https://wsXX.worldskills.uk/module-x/`
+Your application will be available at the module address shown on your landing page.
 
 ## Local Development
 
-```bash
-# Start PHP built-in server
-php -S localhost:8000
+The database variables only exist inside the platform's container. On your own machine you have to provide them, otherwise you get `Access denied for user ''@'localhost'`:
 
-# Or use Docker
+```bash
+# Start PHP built-in server with the variables set for this shell
+DB_HOST=<host> DB_NAME=<database> DB_USER=<user> DB_PASSWORD=<password> php -S localhost:8000
+
+# Or use Docker, passing the database variables yourself
 docker build -t php-app .
-docker run -p 8080:80 php-app
+docker run -p 8080:80 \
+  -e DB_HOST=<host> -e DB_NAME=<database> -e DB_USER=<user> -e DB_PASSWORD=<password> \
+  php-app
 ```
 
 ## Installed PHP Extensions
